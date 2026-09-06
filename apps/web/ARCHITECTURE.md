@@ -180,6 +180,22 @@ Only put code in `lib` when it is truly shared or infrastructural.
 
 If something exists only to simplify one feature page, keep it inside that feature instead of promoting it too early.
 
+### Internationalization (i18n)
+
+The application uses `i18next` for translations.
+
+- **Locale files**: Strings are stored in `src/lib/locales/*.json`. The [`en.json`](./src/lib/locales/en.json) file is the canonical key set and is used as the template for all other languages.
+- **Registration**: All translations are registered in `src/lib/i18n.ts`. This file also defines the `SUPPORTED_LANGUAGES` array which drives the language picker in the UI.
+
+#### How to add or update a language (e.g., Esperanto)
+
+1. **Create (or update) the JSON file** \
+Create (or update) `src/lib/locales/eo.json` mirroring the keys in `en.json` with translated values.
+2. **Register** \
+In `src/lib/i18n.ts`, import the JSON with `import eo from "./locales/eo.json"` and add `eo: { translation: eo }` to the `resources` object.
+3. **Enable** \
+Add `{ code: "eo", name: "Esperanto" }` to the `SUPPORTED_LANGUAGES` array.
+
 ## `src/contexts`
 
 Contexts should be used sparingly for app-wide state that needs broad availability.
