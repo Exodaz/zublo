@@ -1500,9 +1500,11 @@ describe("SubscriptionFormModal", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(350);
     });
-    const pendingProbeCount = resolveBitmaps.length;
+    // createImageBitmap is global too, so count only probes of this test's blob.
+    const ownProbes = () =>
+      createImageBitmapMock.mock.calls.filter(([blob]) => blob === imageBlob).length;
+    const pendingProbeCount = ownProbes();
     expect(pendingProbeCount).toBeGreaterThan(0);
-    expect(createImageBitmapMock).toHaveBeenCalledTimes(pendingProbeCount);
 
     // Cancel the search by changing query to < 2 chars — cleanup runs:
     // cancelled=true, abort.abort(), clearTimeout
@@ -1520,7 +1522,7 @@ describe("SubscriptionFormModal", () => {
       }
     });
 
-    const probedCount = createImageBitmapMock.mock.calls.length;
+    const probedCount = ownProbes();
     // All probes belong to the first batch of 8: no second batch was started.
     expect(probedCount).toBeGreaterThanOrEqual(pendingProbeCount);
     expect(probedCount).toBeLessThanOrEqual(8);

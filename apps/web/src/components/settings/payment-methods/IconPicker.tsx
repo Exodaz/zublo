@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import { sanitizeImageSrc } from "@/lib/utils";
 
 interface IconPickerProps {
   currentSrc: string | null;
@@ -19,12 +20,13 @@ export function IconPicker({
 }: IconPickerProps) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
+  const safeSrc = sanitizeImageSrc(currentSrc);
 
   return (
     <div className="flex items-center gap-3">
-      {currentSrc ? (
+      {safeSrc ? (
         <img
-          src={currentSrc}
+          src={safeSrc}
           alt={t("icon")}
           className="w-10 h-10 rounded-lg object-contain bg-white p-0.5 border"
         />
@@ -42,7 +44,7 @@ export function IconPicker({
         onClick={() => fileRef.current?.click()}
       >
         <Upload className="w-3 h-3 mr-1" />
-        {currentSrc ? t("change_icon") : t("icon")}
+        {safeSrc ? t("change_icon") : t("icon")}
       </Button>
 
       {hasUploadedIcon && (

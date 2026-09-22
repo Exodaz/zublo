@@ -54,7 +54,9 @@ export function getPreset(id: string | undefined): ColorPreset {
 }
 
 export function saveColorToStorage(id: string) {
-  localStorage.setItem(LS_KEY, id);
+  // Persist only a known preset id, never the raw value from the user record.
+  const preset = COLOR_PRESETS.find((p) => p.id === id);
+  if (preset) localStorage.setItem(LS_KEY, preset.id);
 }
 
 export function applyColorFromStorage() {

@@ -62,6 +62,13 @@ describe("color-presets", () => {
     expect(localStorage.getItem(LS_KEYS.COLOR_THEME)).toBe("violet");
   });
 
+  it("ignores unknown color ids instead of storing them", () => {
+    saveColorToStorage("violet");
+    saveColorToStorage("<script>");
+
+    expect(localStorage.getItem(LS_KEYS.COLOR_THEME)).toBe("violet");
+  });
+
   it("builds CSS using the dark foreground override for bright presets", () => {
     const css = buildColorCSS(getPreset("amber"));
 
