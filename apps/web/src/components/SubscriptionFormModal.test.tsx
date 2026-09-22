@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   updateSubscription: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  outsideEvent: { preventDefault: vi.fn() },
   user: {
     payment_tracking: true,
   },
@@ -50,7 +51,24 @@ vi.mock("@/services/subscriptions", () => ({
 
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  // Exposes onInteractOutside through a button so a test can simulate a
+  // click outside the dialog.
+  DialogContent: ({
+    children,
+    onInteractOutside,
+  }: {
+    children: React.ReactNode;
+    onInteractOutside?: (event: { preventDefault: () => void }) => void;
+  }) => (
+    <div>
+      {children}
+      <button
+        type="button"
+        data-testid="dialog-outside"
+        onClick={() => onInteractOutside?.(mocks.outsideEvent)}
+      />
+    </div>
+  ),
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -210,6 +228,27 @@ describe("SubscriptionFormModal", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("keeps the dialog open when the user clicks outside it", () => {
+    const onClose = vi.fn();
+    render(
+      <SubscriptionFormModal
+        sub={null}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={onClose}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("dialog-outside"));
+
+    expect(mocks.outsideEvent.preventDefault).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("submits a new subscription with default values and save callback", async () => {
