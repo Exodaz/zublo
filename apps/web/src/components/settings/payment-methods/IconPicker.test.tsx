@@ -17,6 +17,19 @@ describe("IconPicker", () => {
     expect(screen.getByAltText("icon")).toBeInTheDocument();
   });
 
+  it("does not render an image for an unsafe source", () => {
+    render(
+      <IconPicker
+        currentSrc="javascript:alert(1)"
+        hasUploadedIcon={false}
+        onClear={vi.fn()}
+        onFileChange={vi.fn()}
+      />,
+    );
+    expect(screen.queryByAltText("icon")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "icon" })).toBeInTheDocument();
+  });
+
   it("shows remove button when hasUploadedIcon is true", () => {
     const onClear = vi.fn();
     render(<IconPicker currentSrc="http://img.png" hasUploadedIcon={true} onClear={onClear} onFileChange={vi.fn()} />);

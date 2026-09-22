@@ -15,6 +15,7 @@ import {
   getColorForSub,
   getCurrencyFractionDigits,
   sanitizeHref,
+  sanitizeImageSrc,
   subscriptionProgress,
   toMainCurrency,
   toMonthly,
@@ -208,6 +209,38 @@ describe("formatDate", () => {
     // pt-BR format: "1 de jun. de 2024"
     expect(result).toContain("2024");
     expect(result).toMatch(/1/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeImageSrc
+// ---------------------------------------------------------------------------
+describe("sanitizeImageSrc", () => {
+  it("allows http, https, and blob image URLs", () => {
+    expect(sanitizeImageSrc("https://cdn.example.com/icon.png")).toBe(
+      "https://cdn.example.com/icon.png",
+    );
+    expect(sanitizeImageSrc("http://cdn.example.com/icon.png")).toBe(
+      "http://cdn.example.com/icon.png",
+    );
+    expect(sanitizeImageSrc("blob:http://localhost/1234")).toBe("blob:http://localhost/1234");
+  });
+
+  it("resolves relative paths against the current origin", () => {
+    expect(sanitizeImageSrc("/api/files/pm/1/icon.png")).toBe(
+      `${window.location.origin}/api/files/pm/1/icon.png`,
+    );
+  });
+
+  it("rejects script and data URLs and empty input", () => {
+    expect(sanitizeImageSrc("javascript:alert(1)")).toBeNull();
+    expect(sanitizeImageSrc("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(sanitizeImageSrc(null)).toBeNull();
+    expect(sanitizeImageSrc("")).toBeNull();
+  });
+
+  it("rejects values that cannot be parsed as a URL", () => {
+    expect(sanitizeImageSrc("http://[invalid")).toBeNull();
   });
 });
 

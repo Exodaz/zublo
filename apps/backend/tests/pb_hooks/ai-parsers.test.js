@@ -56,6 +56,17 @@ describe("pb_hooks/lib/pure/ai-parsers.js", () => {
   it("detectGeminiUrl handles null/undefined without throwing", () => {
     // covers `rawUrl || ""` fallback on line 38
     expect(aiParsers.detectGeminiUrl(null)).toBe(false);
+    expect(aiParsers.detectGeminiUrl("not a url")).toBe(false);
+  });
+
+  it("detectGeminiUrl only trusts the real Gemini host", () => {
+    // Otherwise the API key header would be sent to an arbitrary host.
+    expect(
+      aiParsers.detectGeminiUrl("https://evil.com/?generativelanguage.googleapis.com"),
+    ).toBe(false);
+    expect(
+      aiParsers.detectGeminiUrl("https://generativelanguage.googleapis.com.evil.com/v1beta"),
+    ).toBe(false);
   });
 
   it("builds provider-specific recommendation requests", () => {

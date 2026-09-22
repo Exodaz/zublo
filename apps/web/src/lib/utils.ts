@@ -150,6 +150,23 @@ export function sanitizeHref(url: string | null | undefined): string | null {
 }
 
 /**
+ * Return an image URL only when it uses a scheme safe to render (http, https,
+ * or a local blob preview). Relative paths resolve against the current origin.
+ */
+export function sanitizeImageSrc(src: string | null | undefined): string | null {
+  if (!src) return null;
+  try {
+    const parsed = new URL(src, window.location.origin);
+    if (["http:", "https:", "blob:"].includes(parsed.protocol)) {
+      return parsed.href;
+    }
+  } catch {
+    // Unparseable — reject
+  }
+  return null;
+}
+
+/**
  * Days until a date.
  */
 export function daysUntil(dateStr: string): number {

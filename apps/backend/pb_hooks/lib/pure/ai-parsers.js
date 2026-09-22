@@ -1,3 +1,5 @@
+const urlHost = require("./url-host.js");
+
 function cleanModelName(value) {
   return String(value || "").replace(/^models\//, "");
 }
@@ -35,7 +37,8 @@ function stripJsonFence(value) {
 }
 
 function detectGeminiUrl(rawUrl) {
-  return String(rawUrl || "").indexOf("generativelanguage.googleapis.com") !== -1;
+  const parsed = urlHost.parseHttpUrl(rawUrl);
+  return !!parsed && parsed.host === "generativelanguage.googleapis.com";
 }
 
 function buildRecommendationRequest(rawUrl, apiKey, model, systemPrompt, userPrompt) {

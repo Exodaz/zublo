@@ -96,4 +96,52 @@ describe("pb_hooks/lib/pure/logo-utils.js", () => {
 
     expect(extractImageUrlsFromPage(html, 10)).toEqual(["https://cdn.example.com/valid.png"]);
   });
+
+  it("does not trust hosts that only appear in the path, query, or userinfo", () => {
+    const html = [
+      `<img src="https://evil.com/imgs.search.brave.com/tracker" />`,
+      `<img src="https://evil.com/?q=encrypted-tbn0.gstatic.com/images?q=tbn:x" />`,
+      `<img src="https://imgs.search.brave.com@evil.com/tracker" />`,
+      `<img src="https://imgs.search.brave.com/real-logo" />`,
+    ].join("");
+    expect(extractImageUrlsFromPage(html, 10)).toEqual(["https://imgs.search.brave.com/real-logo"]);
+  });
+
+  it("only blocks gstatic toolbar and wiki pages on their real hosts", () => {
+    const html = [
+      `<img src="https://cdn.example.com/ssl.gstatic.com/gb/images/logo.png" />`,
+      `<img src="https://cdn.example.com/wikipedia.org/wiki/logo.png" />`,
+      `<img src="https://en.wikipedia.org/wiki/Logo.png" />`,
+      `<img src="https://upload.wikimedia.org/wiki/Logo.png" />`,
+    ].join("");
+    expect(extractImageUrlsFromPage(html, 10)).toEqual([
+      "https://cdn.example.com/ssl.gstatic.com/gb/images/logo.png",
+      "https://cdn.example.com/wikipedia.org/wiki/logo.png",
+    ]);
+  });
+
+  it("fallback skips URLs whose image extension is only in the query or whose host is empty", () => {
+    const html = "https://cdn.example.com/page?file=logo.png https://?x.png https://cdn.example.com/ok.png";
+    expect(extractImageUrlsFromPage(html, 10)).toEqual(["https://cdn.example.com/ok.png"]);
+  });
+
+  it("works without a global URL, as in the PocketBase JSVM", () => {
+    const originalUrl = globalThis.URL;
+    // goja exposes no URL constructor; the parser must not rely on it.
+    delete globalThis.URL;
+    try {
+      const html = [
+        `<img src="https://cdn.example.com/logo.png" />`,
+        `<img src="//cdn.example.com/other.svg" />`,
+        "https://imgs.search.brave.com/abc123",
+      ].join(" ");
+      expect(extractImageUrlsFromPage(html, 10)).toEqual([
+        "https://cdn.example.com/logo.png",
+        "https://cdn.example.com/other.svg",
+        "https://imgs.search.brave.com/abc123",
+      ]);
+    } finally {
+      globalThis.URL = originalUrl;
+    }
+  });
 });
