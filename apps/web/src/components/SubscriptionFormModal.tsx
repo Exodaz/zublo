@@ -25,6 +25,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLogoSearch } from "@/hooks/useLogoSearch";
 import type { SubscriptionFormValues } from "@/hooks/useSubscriptionForm";
 import { useSubscriptionForm } from "@/hooks/useSubscriptionForm";
+import {
+  availableBillingPresets,
+  CUSTOM_BILLING_PRESET,
+  CYCLE_NAME_KEYS,
+  formatBillingPeriod,
+} from "@/lib/billingPeriods";
 import { compressImage } from "@/lib/image";
 import { ONE_TIME_CYCLE } from "@/lib/recordTypes";
 import { toast } from "@/lib/toast";
@@ -76,6 +82,27 @@ export function SubscriptionFormModal({
   const isCredit = watchedRecordType === "credit";
   const isFiniteSchedule = !isCredit && watchedEndMode !== "never";
   const oneTimeCycle = cycles.find((cycle) => cycle.name === ONE_TIME_CYCLE);
+  const recurringCycles = cycles.filter((cycle) => cycle.name !== ONE_TIME_CYCLE);
+  const billingPresets = availableBillingPresets(cycles);
+
+  const watchedBillingPreset = watch("billing_preset");
+  const watchedCycle = watch("cycle");
+  const watchedFrequency = Number(watch("frequency"));
+  const watchedCycleName = cycles.find((cycle) => cycle.id === watchedCycle)?.name;
+  const customPeriodLabel =
+    watchedCycleName && Number.isInteger(watchedFrequency) && watchedFrequency >= 1
+      ? formatBillingPeriod(t, watchedCycleName, watchedFrequency)
+      : "";
+
+  // Presets are shortcuts that fill cycle + frequency. "Custom" keeps the
+  // current values so the user can fine-tune them from where they were.
+  const handlePresetChange = (presetId: string) => {
+    setValue("billing_preset", presetId);
+    const preset = billingPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setValue("cycle", preset.cycleId, { shouldValidate: true });
+    setValue("frequency", String(preset.frequency), { shouldValidate: true });
+  };
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const onSubmit = async (data: SubscriptionFormValues) => {
@@ -198,7 +225,12 @@ export function SubscriptionFormModal({
                       setValue("auto_mark_paid", false);
                     } else {
                       const monthlyCycle = cycles.find((cycle) => cycle.name === "Monthly");
-                      if (monthlyCycle) setValue("cycle", monthlyCycle.id);
+                      if (monthlyCycle) {
+                        setValue("cycle", monthlyCycle.id);
+                        setValue("billing_preset", "monthly");
+                      } else {
+                        setValue("billing_preset", CUSTOM_BILLING_PRESET);
+                      }
                     }
                   }}
                 >
@@ -271,40 +303,73 @@ export function SubscriptionFormModal({
             </div>
           </div>
 
-          {/* Frequency + Cycle */}
+          {/* Billing period: preset or custom frequency + cycle */}
           {!isCredit ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div className="space-y-2">
-                <Label>{t("frequency")}</Label>
-                <Input type="number" min="1" {...register("frequency")} />
-                {errors.frequency && (
-                  <p className="text-sm text-destructive">{errors.frequency.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>{t("cycle")}</Label>
+                <Label>{t("billing_period")}</Label>
                 <Controller
-                  name="cycle"
+                  name="billing_preset"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={handlePresetChange}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {cycles
-                          .filter((cycle) => cycle.name !== ONE_TIME_CYCLE)
-                          .map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
+                        {billingPresets.map((preset) => (
+                          <SelectItem key={preset.id} value={preset.id}>
+                            {t(`billing_preset_${preset.id}`)}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value={CUSTOM_BILLING_PRESET}>
+                          {t("billing_preset_custom")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.cycle && <p className="text-sm text-destructive">{errors.cycle.message}</p>}
               </div>
+              {watchedBillingPreset === CUSTOM_BILLING_PRESET && (
+                <div className="grid grid-cols-2 gap-3 rounded-xl border bg-muted/30 p-3">
+                  <div className="space-y-2">
+                    <Label>{t("frequency")}</Label>
+                    <Input type="number" min="1" {...register("frequency")} />
+                    {errors.frequency && (
+                      <p className="text-sm text-destructive">{errors.frequency.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("cycle")}</Label>
+                    <Controller
+                      name="cycle"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {recurringCycles.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {CYCLE_NAME_KEYS[c.name] ? t(CYCLE_NAME_KEYS[c.name]) : c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.cycle && (
+                      <p className="text-sm text-destructive">{errors.cycle.message}</p>
+                    )}
+                  </div>
+                  {customPeriodLabel && (
+                    <p className="col-span-2 text-xs text-muted-foreground">
+                      {t("billing_period_preview", { period: customPeriodLabel })}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-xl border bg-muted/30 px-4 py-3">

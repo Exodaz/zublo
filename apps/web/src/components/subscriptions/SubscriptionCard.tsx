@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { isCredit } from "@/lib/recordTypes";
 import {
   cn,
@@ -234,6 +235,7 @@ export function SubscriptionCard({
   const { t } = useTranslation();
   const currency = sub.expand?.currency;
   const cycleName = sub.expand?.cycle?.name ?? "Monthly";
+  const periodLabel = formatBillingPeriod(t, cycleName, sub.frequency || 1);
   const category = sub.expand?.category;
   const payer = sub.expand?.payer;
   const paymentMethod = sub.expand?.payment_method;
@@ -295,7 +297,7 @@ export function SubscriptionCard({
           <div className="min-w-[7rem] text-left sm:text-right">
             <p
               className={cn(
-                "font-mono font-bold tracking-tight",
+                "font-mono font-bold tracking-tight whitespace-nowrap",
                 credit && "text-green-600 dark:text-green-400",
               )}
             >
@@ -303,7 +305,7 @@ export function SubscriptionCard({
               {formatPrice(price, symbol, { currencyCode: displayCurrency?.code })}
             </p>
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {credit ? t("one_time") : showMonthly ? t("monthly") : cycleName}
+              {credit ? t("one_time") : showMonthly ? t("monthly") : periodLabel}
             </p>
           </div>
 
@@ -348,8 +350,8 @@ export function SubscriptionCard({
     >
       <div className="absolute -z-10 bg-gradient-to-br from-primary/5 to-transparent w-full h-full top-0 left-0 transition-opacity opacity-0 group-hover:opacity-100" />
 
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div className="flex min-w-[10rem] flex-1 items-center gap-3">
           <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-background shadow-sm border flex items-center justify-center text-xl font-bold">
             {sub.logo ? (
               <img
@@ -363,7 +365,7 @@ export function SubscriptionCard({
               </span>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="font-bold text-lg leading-tight line-clamp-1 group-hover:text-primary transition-colors">
               {sub.name}
             </h3>
@@ -385,18 +387,18 @@ export function SubscriptionCard({
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="ml-auto shrink-0 text-right">
           <p
             className={cn(
-              "font-extrabold text-xl font-mono tracking-tight",
+              "font-extrabold text-xl font-mono tracking-tight whitespace-nowrap",
               credit ? "text-green-600 dark:text-green-400" : "text-foreground",
             )}
           >
             {credit ? "+" : ""}
             {formatPrice(price, symbol, { currencyCode: displayCurrency?.code })}
           </p>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-            {credit ? t("one_time") : showMonthly ? t("monthly") : cycleName}
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">
+            {credit ? t("one_time") : showMonthly ? t("monthly") : periodLabel}
           </p>
         </div>
       </div>

@@ -398,6 +398,158 @@ describe("SubscriptionFormModal", () => {
     );
   });
 
+  it("applies a billing preset to cycle and frequency without showing custom fields", async () => {
+    render(
+      <SubscriptionFormModal
+        sub={null}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    // Only presets whose cycle exists are offered (no Weekly/Quarterly here).
+    expect(screen.queryByTestId("select-item-weekly")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("select-item-quarterly")).not.toBeInTheDocument();
+    expect(document.querySelector('input[name="frequency"]')).not.toBeInTheDocument();
+
+    fireEvent.change(document.querySelector('input[name="name"]') as HTMLInputElement, {
+      target: { value: "VPN" },
+    });
+    fireEvent.click(screen.getByTestId("select-item-triennial"));
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(mocks.createSubscription).toHaveBeenCalled());
+    expect(mocks.createSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ cycle: "yearly", frequency: 3 }),
+    );
+  });
+
+  it("lets the user enter any frequency and cycle through the custom option", async () => {
+    render(
+      <SubscriptionFormModal
+        sub={null}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]') as HTMLInputElement, {
+      target: { value: "Domain" },
+    });
+    fireEvent.click(screen.getByTestId("select-item-custom"));
+    fireEvent.change(document.querySelector('input[name="frequency"]') as HTMLInputElement, {
+      target: { value: "5" },
+    });
+    // The preset and cycle selects share the "yearly" value; the cycle one comes last.
+    const yearlyItems = screen.getAllByTestId("select-item-yearly");
+    fireEvent.click(yearlyItems[yearlyItems.length - 1]);
+
+    expect(screen.getByText("billing_period_preview")).toBeInTheDocument();
+    // Still custom: picking a cycle must not collapse the manual fields.
+    expect(document.querySelector('input[name="frequency"]')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(mocks.createSubscription).toHaveBeenCalled());
+    expect(mocks.createSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ cycle: "yearly", frequency: 5 }),
+    );
+  });
+
+  it("falls back to the raw name for a cycle without a translation key", () => {
+    mocks.useQuery.mockReturnValue({
+      data: [
+        { id: "monthly", name: "Monthly" },
+        { id: "fortnightly", name: "Fortnightly" },
+      ],
+    });
+
+    render(
+      <SubscriptionFormModal
+        sub={null}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("select-item-custom"));
+    expect(screen.getByTestId("select-item-fortnightly")).toHaveTextContent("Fortnightly");
+    expect(screen.getAllByTestId("select-item-monthly").at(-1)).toHaveTextContent("monthly");
+  });
+
+  it("rejects a fractional custom frequency", async () => {
+    render(
+      <SubscriptionFormModal
+        sub={null}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]') as HTMLInputElement, {
+      target: { value: "Test" },
+    });
+    fireEvent.click(screen.getByTestId("select-item-custom"));
+    fireEvent.change(document.querySelector('input[name="frequency"]') as HTMLInputElement, {
+      target: { value: "1.5" },
+    });
+    // Submit the form directly: the browser's own min/step check would block a
+    // button click first, and this asserts the schema catches it regardless.
+    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
+
+    expect(await screen.findByText("frequency_min")).toBeInTheDocument();
+    expect(mocks.createSubscription).not.toHaveBeenCalled();
+  });
+
+  it("opens an existing subscription on its matching preset or in custom mode", () => {
+    const props = {
+      userId: "user-1",
+      currencies: [getCurrency()],
+      categories: [getCategory()],
+      paymentMethods: [getPaymentMethod()],
+      household: [getHousehold()],
+      onClose: vi.fn(),
+      onSaved: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <SubscriptionFormModal
+        {...props}
+        sub={getSubscription({ cycle: "yearly", frequency: 2 })}
+      />,
+    );
+    // Yearly × 2 is the biennial preset, so the manual fields stay hidden.
+    expect(document.querySelector('input[name="frequency"]')).not.toBeInTheDocument();
+
+    rerender(
+      <SubscriptionFormModal
+        {...props}
+        sub={getSubscription({ id: "sub-2", cycle: "yearly", frequency: 5 })}
+      />,
+    );
+    expect(document.querySelector('input[name="frequency"]')).toHaveValue(5);
+  });
+
   it("keeps the selected cycle when the target cycle is missing from the list", async () => {
     // Neither One-Time nor Monthly exists, so both cycle guards take their
     // false branch and the record keeps whatever cycle it already had.
@@ -1267,6 +1419,17 @@ describe("SubscriptionFormModal", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
+    // Probes left pending by earlier tests can settle during this one and hit
+    // the same global URL stub, so only count URLs made from this test's blob.
+    let ownUrlCount = 0;
+    const createObjectURL = vi.fn((blob: Blob) =>
+      blob === imageBlob ? `blob:own-${ownUrlCount++}` : "blob:other",
+    );
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    const ownCalls = (mock: typeof revokeObjectURL) =>
+      mock.mock.calls.filter(([url]) => String(url).startsWith("blob:own-")).length;
+
     const resolveBitmaps: Array<() => void> = [];
     const createImageBitmapMock = vi.fn().mockImplementation(
       () =>
@@ -1306,16 +1469,24 @@ describe("SubscriptionFormModal", () => {
     // cancelled=true, abort.abort(), clearTimeout
     fireEvent.change(logoInput, { target: { value: "x" } });
 
-    // Finish just the pending image work. collectLogos observes `cancelled`,
-    // revokes every blob URL it created, and exits before another batch starts.
+    // Finish the pending image work. A probe from the same batch can still be
+    // on its way to createImageBitmap under load, so keep resolving until the
+    // chain drains instead of assuming a single microtask is enough.
+    // collectLogos then observes `cancelled`, revokes every blob URL it
+    // created, and exits before another batch starts.
     await act(async () => {
-      resolveBitmaps.forEach((resolve) => resolve());
-      await Promise.resolve();
+      for (let tick = 0; tick < 20; tick++) {
+        resolveBitmaps.splice(0).forEach((resolve) => resolve());
+        await Promise.resolve();
+      }
     });
 
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(pendingProbeCount);
-    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(pendingProbeCount);
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:logo");
+    const probedCount = createImageBitmapMock.mock.calls.length;
+    // All probes belong to the first batch of 8: no second batch was started.
+    expect(probedCount).toBeGreaterThanOrEqual(pendingProbeCount);
+    expect(probedCount).toBeLessThanOrEqual(8);
+    expect(ownUrlCount).toBe(probedCount);
+    expect(ownCalls(revokeObjectURL)).toBe(probedCount);
 
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -1942,6 +2113,8 @@ describe("SubscriptionFormModal", () => {
     fireEvent.change(document.querySelector('input[name="name"]') as HTMLInputElement, {
       target: { value: "Test" },
     });
+    // The frequency input only exists in custom mode
+    fireEvent.click(screen.getByTestId("select-item-custom"));
     // Clear frequency to trigger min(1) validation failure
     fireEvent.change(document.querySelector('input[name="frequency"]') as HTMLInputElement, {
       target: { value: "" },

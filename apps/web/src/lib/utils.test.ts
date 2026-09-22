@@ -119,6 +119,18 @@ describe("formatPrice", () => {
     expect(getCurrencyFractionDigits()).toBe(2);
     expect(getCurrencyFractionDigits("not-a-currency")).toBe(2);
   });
+
+  it("falls back to two decimals when Intl reports no fraction digits", () => {
+    // A regular function (not an arrow) so the code under test can `new` it.
+    const spy = vi.spyOn(Intl, "NumberFormat").mockImplementation(function () {
+      return { resolvedOptions: () => ({}) } as unknown as Intl.NumberFormat;
+    });
+    try {
+      expect(getCurrencyFractionDigits("USD")).toBe(2);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -147,6 +147,32 @@ describe("useStatisticsDerivedData", () => {
     ]);
   });
 
+  it("orders each category's subscriptions by value, then by name on ties", () => {
+    const expand = {
+      currency: currencies[0],
+      cycle: { id: "cycle-1", name: "Monthly" as const },
+      category: { id: "cat-1", name: "Streaming", user: "user-1" },
+    };
+    const { result } = renderHook(() =>
+      useStatisticsDerivedData({
+        subscriptions: [
+          getSubscription({ id: "sub-b", name: "Beta", price: 10, expand }),
+          getSubscription({ id: "sub-c", name: "Gamma", price: 25, expand }),
+          getSubscription({ id: "sub-a", name: "Alpha", price: 10, expand }),
+        ],
+        currencies,
+        yearlyCosts: [],
+        groupBy: "category",
+      }),
+    );
+
+    expect(result.current.categoryDetails.Streaming.map((detail) => detail.name)).toEqual([
+      "Gamma",
+      "Alpha",
+      "Beta",
+    ]);
+  });
+
   it("treats frequency of 0 as 1 when computing monthly cost (frequency || 1 branch)", () => {
     // A subscription with frequency=0 should behave like frequency=1 (monthly)
     const sub = getSubscription({

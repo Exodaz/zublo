@@ -33,11 +33,13 @@ describe("SubscriptionsToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: "filter" }));
     fireEvent.click(screen.getByRole("button", { name: "sort" }));
     fireEvent.click(screen.getByRole("button", { name: "list_view" }));
+    fireEvent.click(screen.getByRole("button", { name: "grid_view" }));
 
     expect(onSearchChange).toHaveBeenCalledWith("spotify");
     expect(onToggleFilters).toHaveBeenCalledTimes(1);
     expect(onCycleSort).toHaveBeenCalledTimes(1);
     expect(onViewChange).toHaveBeenCalledWith("list");
+    expect(onViewChange).toHaveBeenCalledWith("grid");
     expect(screen.getByRole("button", { name: "grid_view" })).toHaveAttribute(
       "aria-pressed",
       "true",
