@@ -250,8 +250,8 @@ describe("SubDetailDialog", () => {
         t={(key) => key}
       />,
     );
-    // cycleLabel = "Every 3 months" (Monthly -> month + s)
-    expect(screen.getByText(/Every 3/)).toBeInTheDocument();
+    // Monthly × 3 matches no preset, so it gets the "every N months" label
+    expect(screen.getByText("billing_every_n_months")).toBeInTheDocument();
   });
 
   // Line 159: payment record with amount shown in paid status

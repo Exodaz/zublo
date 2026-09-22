@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { isCredit } from "@/lib/recordTypes";
 import { daysUntil, formatDate, formatPrice, sanitizeHref } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -61,9 +62,7 @@ export function SubDetailDialog({
   const cycleLabel = credit
     ? t("one_time")
     : cycle
-      ? `${sub.frequency > 1 ? `Every ${sub.frequency} ` : ""}${cycle.name
-          .replace("ly", "")
-          .toLowerCase()}${sub.frequency > 1 ? "s" : ""}`
+      ? formatBillingPeriod(t, cycle.name, sub.frequency)
       : "";
 
   const dLeft = daysUntil(sub.next_payment);

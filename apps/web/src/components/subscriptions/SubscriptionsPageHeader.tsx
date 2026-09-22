@@ -36,7 +36,7 @@ export function SubscriptionsPageHeader({
         <p className="mt-1 text-muted-foreground">{t("subscriptions_desc")}</p>
       </div>
 
-      <div className="flex w-full items-center gap-2 sm:w-auto">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
         <input
           ref={importInputRef}
           type="file"

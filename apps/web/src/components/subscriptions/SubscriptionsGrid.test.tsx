@@ -73,6 +73,15 @@ describe("SubscriptionsGrid", () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
+  it("renders row-shaped skeletons while loading the list layout", () => {
+    const { container } = render(
+      <SubscriptionsGrid isLoading layout="list" subscriptions={[]} {...baseHandlers} />,
+    );
+    const skeletons = container.querySelectorAll(".animate-pulse");
+    expect(skeletons).toHaveLength(6);
+    expect(skeletons[0]).toHaveClass("rounded-xl");
+  });
+
   it("renders the empty state when subscriptions list is empty and not loading", () => {
     render(<SubscriptionsGrid isLoading={false} subscriptions={[]} {...baseHandlers} />);
     expect(screen.getByText("no_subscriptions")).toBeInTheDocument();

@@ -469,10 +469,121 @@ describe("SubscriptionCard", () => {
     );
 
     expect(screen.getByText("inactive_label")).toBeInTheDocument();
-    expect(screen.getByText("Yearly")).toBeInTheDocument();
+    expect(screen.getByText("billing_preset_yearly")).toBeInTheDocument();
     expect(screen.getByText("N")).toBeInTheDocument();
     expect(screen.getByText("UM")).toBeInTheDocument();
     expect(screen.queryByText("billing_cycle")).not.toBeInTheDocument();
     expect(screen.queryByTitle("open_url")).not.toBeInTheDocument();
+  });
+
+  describe("list layout", () => {
+    const actions = {
+      onEdit: vi.fn(),
+      onClone: vi.fn(),
+      onRenew: vi.fn(),
+      onHistory: vi.fn(),
+      onDelete: vi.fn(),
+    };
+
+    it("renders a recurring expense row with logo, schedule, payer, and payment method", () => {
+      render(
+        <SubscriptionCard
+          sub={getSubscription()}
+          layout="list"
+          mainCurrency={getCurrency({ is_main: true, symbol: "$" })}
+          convertCurrency
+          showMonthly
+          showProgress={false}
+          {...actions}
+        />,
+      );
+
+      expect(screen.getByAltText("Netflix")).toHaveAttribute(
+        "src",
+        "https://cdn.example.com/netflix.png",
+      );
+      expect(screen.getByText("Streaming")).toBeInTheDocument();
+      // toMonthly halves 20 → 10, then conversion doubles it → 20.
+      expect(screen.getByText("20.00 $")).toBeInTheDocument();
+      expect(screen.getByText("monthly")).toBeInTheDocument();
+      expect(screen.getByText("next")).toBeInTheDocument();
+      expect(screen.getByText("Apr 10, 2026")).toBeInTheDocument();
+      expect(screen.getByText("Daniel")).toBeInTheDocument();
+      expect(screen.queryByText("inactive_label")).not.toBeInTheDocument();
+      expect(screen.queryByText("credit_income")).not.toBeInTheDocument();
+    });
+
+    it("shows the billing period when monthly normalization is off", () => {
+      render(
+        <SubscriptionCard
+          sub={getSubscription({
+            frequency: 3,
+            expand: {
+              currency: getCurrency({ id: "cur-2", symbol: "R$" }),
+              cycle: { id: "yearly", name: "Yearly" },
+            },
+          })}
+          layout="list"
+          showMonthly={false}
+          showProgress={false}
+          {...actions}
+        />,
+      );
+
+      expect(screen.getByText("billing_preset_triennial")).toBeInTheDocument();
+      // Without category, payer, or payment method the row uses its fallbacks.
+      expect(screen.getByText("category")).toBeInTheDocument();
+      expect(screen.queryByText("Daniel")).not.toBeInTheDocument();
+    });
+
+    it("renders an inactive credit row without a logo or upcoming date", () => {
+      mocks.subscriptionLogoUrl.mockReturnValue(null);
+      const { rerender } = render(
+        <SubscriptionCard
+          sub={getSubscription({
+            name: "Bonus",
+            record_type: "credit",
+            inactive: true,
+            logo: undefined,
+            expand: {
+              currency: getCurrency({ id: "cur-2", symbol: "$", is_main: true }),
+              cycle: { id: "one-time", name: "One-Time" },
+            },
+          })}
+          layout="list"
+          showMonthly
+          showProgress={false}
+          {...actions}
+        />,
+      );
+
+      expect(screen.getByText("B")).toBeInTheDocument();
+      expect(screen.getByText("credit_income")).toBeInTheDocument();
+      expect(screen.getByText("inactive_label")).toBeInTheDocument();
+      expect(screen.getByText("+20.00 $")).toBeInTheDocument();
+      expect(screen.getByText("one_time")).toBeInTheDocument();
+      expect(screen.queryByText("received_on")).not.toBeInTheDocument();
+
+      // Active credit: shows when it is received; a null logo URL falls back to "".
+      rerender(
+        <SubscriptionCard
+          sub={getSubscription({
+            name: "Bonus",
+            record_type: "credit",
+            expand: {
+              currency: getCurrency({ id: "cur-2", symbol: "$", is_main: true }),
+              cycle: { id: "one-time", name: "One-Time" },
+            },
+          })}
+          layout="list"
+          showMonthly
+          showProgress={false}
+          {...actions}
+        />,
+      );
+
+      expect(screen.getByText("received_on")).toBeInTheDocument();
+      expect(screen.getByAltText("Bonus")).not.toHaveAttribute("src", expect.stringMatching(/./));
+    });
   });
 });

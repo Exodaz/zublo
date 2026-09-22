@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { findBillingPreset } from "@/lib/billingPeriods";
 import { queryKeys } from "@/lib/queryKeys";
 import { cyclesService } from "@/services/cycles";
 import type { Currency, Household, Subscription } from "@/types";
@@ -19,6 +20,7 @@ const _schemaShape = z.object({
   currency: z.string(),
   frequency: z.string(),
   cycle: z.string(),
+  billing_preset: z.string(),
   next_payment: z.string(),
   start_date: z.string(),
   payment_method: z.string(),
@@ -74,6 +76,8 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
       currency: z.string().min(1, t("required")),
       frequency: z.string().min(1, t("required")),
       cycle: z.string().min(1, t("required")),
+      // UI-only: which preset drives cycle/frequency, or "custom". Never sent.
+      billing_preset: z.string(),
       next_payment: z.string().min(1, t("required")),
       start_date: z.string().min(1, t("required")),
       payment_method: z.string(),
@@ -94,6 +98,15 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
     })
     .superRefine((values, context) => {
       if (values.record_type === "credit") return;
+
+      const frequency = Number(values.frequency);
+      if (values.frequency && (!Number.isInteger(frequency) || frequency < 1)) {
+        context.addIssue({
+          code: "custom",
+          path: ["frequency"],
+          message: t("frequency_min"),
+        });
+      }
 
       if (values.end_mode === "date") {
         if (!values.end_date) {
@@ -146,6 +159,7 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
       currency: "",
       frequency: "1",
       cycle: "",
+      billing_preset: "monthly",
       next_payment: nextMonthDate(),
       start_date: new Date().toISOString().split("T")[0],
       payment_method: "",
@@ -178,6 +192,10 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
         currency: sub.currency,
         frequency: String(sub.frequency),
         cycle: sub.cycle,
+        billing_preset: findBillingPreset(
+          (sub.expand?.cycle ?? cycles.find((c) => c.id === sub.cycle))?.name,
+          sub.frequency,
+        ),
         next_payment: toDateOnly(sub.next_payment),
         start_date: toDateOnly(sub.start_date) || new Date().toISOString().split("T")[0],
         payment_method: sub.payment_method || "",
@@ -206,6 +224,7 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
         currency: mainCur?.id || currencies[0]?.id || "",
         frequency: "1",
         cycle: monthCycle?.id || cycles[0]?.id || "",
+        billing_preset: monthCycle ? "monthly" : "custom",
         next_payment: nextMonthDate(),
         start_date: new Date().toISOString().split("T")[0],
         payment_method: "",

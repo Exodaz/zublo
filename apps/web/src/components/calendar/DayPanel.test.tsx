@@ -144,7 +144,7 @@ describe("DayPanel", () => {
     expect(screen.getByText("1 subscription ·")).toBeInTheDocument();
     expect(screen.getAllByText("10 $")).toHaveLength(2);
     expect(screen.getByText("Streaming")).toBeInTheDocument();
-    expect(screen.getByText("monthly")).toBeInTheDocument();
+    expect(screen.getByText("billing_preset_monthly")).toBeInTheDocument();
     expect(screen.getByText("paid")).toBeInTheDocument();
     expect(screen.getByAltText("Netflix")).toHaveAttribute(
       "src",
@@ -326,7 +326,7 @@ describe("DayPanel", () => {
     expect(screen.getByText("no_subscriptions_due")).toBeInTheDocument();
   });
 
-  it("renders frequency prefix when sub.frequency > 1", () => {
+  it("renders an every-N label when sub.frequency matches no preset", () => {
     const entry = {
       sub: getSubscription({ id: "sub-1", frequency: 3 }),
       date: new Date(2026, 2, 10),
@@ -350,36 +350,8 @@ describe("DayPanel", () => {
       />,
     );
 
-    // frequency > 1 shows "${frequency}× " prefix
-    expect(screen.getByText(/3×/)).toBeInTheDocument();
-  });
-
-  it("falls back to cycle.name when t returns empty string (covers || cycle.name on line 193)", () => {
-    const entry = {
-      sub: getSubscription({ id: "sub-1", frequency: 1 }),
-      date: new Date(2026, 2, 10),
-    };
-
-    render(
-      <DayPanel
-        day={10}
-        month={3}
-        year={2026}
-        entries={[entry]}
-        total={10}
-        mainCurrency={getCurrency()}
-        currencies={[getCurrency()]}
-        now={new Date(2026, 2, 8)}
-        t={(_key) => ""}
-        paymentTracking={false}
-        paymentRecords={[]}
-        onSelectEntry={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
-
-    // t returns "" so the || cycle.name fallback renders "Monthly"
-    expect(screen.getByText("Monthly")).toBeInTheDocument();
+    // Monthly × 3 matches no preset, so it gets the "every N months" label
+    expect(screen.getByText("billing_every_n_months")).toBeInTheDocument();
   });
 
   it("shows overdue CircleDot in logo-image div when isOverdue is true and logo exists", () => {

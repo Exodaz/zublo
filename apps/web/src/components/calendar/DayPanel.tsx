@@ -3,6 +3,7 @@ import { CheckCircle2, CircleDot, Info, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { isCredit } from "@/lib/recordTypes";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -174,8 +175,7 @@ export function DayPanel({
                       )}
                       {cycle && (
                         <span className="text-[11px] text-muted-foreground">
-                          {sub.frequency > 1 ? `${sub.frequency}× ` : ""}
-                          {t(cycle.name.toLowerCase()) || cycle.name}
+                          {formatBillingPeriod(t, cycle.name, sub.frequency)}
                         </span>
                       )}
                       {paymentTracking && isPaid && (
