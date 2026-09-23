@@ -194,27 +194,72 @@ That narrow scope is the point.
 
 ## Deploy In Minutes
 
-Create a `docker-compose.yml` like this:
+Images are published to GitHub Container Registry for `linux/amd64` and `linux/arm64`:
+
+| Tag | Use it for |
+|---|---|
+| `ghcr.io/exodaz/zublo:latest` | The newest build of this fork |
+| `ghcr.io/exodaz/zublo:0.7.0-family.1` | A pinned version (recommended for servers) |
+
+This fork adds family sharing, services with brand logos, payment accounts and the subscription summary. The upstream image without these features is `ghcr.io/danielalves96/zublo`.
+
+**1. Create a folder with a `.env` file**
+
+```bash
+mkdir zublo && cd zublo
+cat > .env <<'ENV'
+PB_ENCRYPTION_KEY=replace-with-a-long-random-string
+BRANDFETCH_CLIENT_ID=
+ENV
+```
+
+Generate a key with `openssl rand -hex 32`. `BRANDFETCH_CLIENT_ID` is optional (see [Configuration](#configuration)).
+
+**2. Create `docker-compose.yml`**
 
 ```yaml
 services:
   zublo:
-    image: ghcr.io/danielalves96/zublo:latest
+    image: ghcr.io/exodaz/zublo:latest
     container_name: zublo
     restart: unless-stopped
     ports:
       - "9597:9597"
     environment:
-      PB_ENCRYPTION_KEY: "change-me-in-production"
+      PB_ENCRYPTION_KEY: ${PB_ENCRYPTION_KEY}
+      BRANDFETCH_CLIENT_ID: ${BRANDFETCH_CLIENT_ID:-}
     volumes:
       - ./zublo-data:/pb/pb_data
 ```
 
-Start it:
+**3. Start it**
 
 ```bash
 docker compose up -d
 ```
+
+Or with plain Docker:
+
+```bash
+docker run -d --name zublo --restart unless-stopped \
+  -p 9597:9597 \
+  -e PB_ENCRYPTION_KEY=replace-with-a-long-random-string \
+  -e BRANDFETCH_CLIENT_ID= \
+  -v "$(pwd)/zublo-data:/pb/pb_data" \
+  ghcr.io/exodaz/zublo:latest
+```
+
+**Upgrading**
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Database migrations run automatically on start. Back up `zublo-data` before upgrading between versions.
+
+**Switching from the upstream image**
+
+Change `image:` to `ghcr.io/exodaz/zublo:latest` and keep the same `pb_data` volume. The new migrations add columns and a table, so existing data stays as it is.
 
 
 Then open:

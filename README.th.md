@@ -199,28 +199,72 @@ Zublo มีระบบ AI ที่ทำงานกับข้อมูล 
 
 ## ติดตั้งในไม่กี่นาที
 
-สร้างไฟล์ `docker-compose.yml` แบบนี้:
+Image อยู่บน GitHub Container Registry รองรับทั้ง `linux/amd64` และ `linux/arm64` (เช่น Raspberry Pi, Mac M-series, NAS ที่ใช้ ARM):
+
+| Tag | ใช้เมื่อ |
+|---|---|
+| `ghcr.io/exodaz/zublo:latest` | ต้องการเวอร์ชันล่าสุดของ fork นี้ |
+| `ghcr.io/exodaz/zublo:0.7.0-family.1` | ต้องการล็อกเวอร์ชัน (แนะนำสำหรับเซิร์ฟเวอร์) |
+
+fork นี้เพิ่มฟีเจอร์สมาชิกครอบครัว, Service พร้อมโลโก้แบรนด์, Payment account และหน้าสรุป subscription ส่วน image ต้นฉบับที่ไม่มีฟีเจอร์เหล่านี้คือ `ghcr.io/danielalves96/zublo`
+
+**1. สร้างโฟลเดอร์และไฟล์ `.env`**
+
+```bash
+mkdir zublo && cd zublo
+cat > .env <<'ENV'
+PB_ENCRYPTION_KEY=ใส่ข้อความสุ่มยาวๆ
+BRANDFETCH_CLIENT_ID=
+ENV
+```
+
+สร้างคีย์สุ่มได้ด้วย `openssl rand -hex 32` ส่วน `BRANDFETCH_CLIENT_ID` ไม่บังคับ (ดู [การตั้งค่า](#การตั้งค่า))
+
+**2. สร้างไฟล์ `docker-compose.yml`**
 
 ```yaml
 services:
   zublo:
-    image: ghcr.io/danielalves96/zublo:latest
+    image: ghcr.io/exodaz/zublo:latest
     container_name: zublo
     restart: unless-stopped
     ports:
       - "9597:9597"
     environment:
-      PB_ENCRYPTION_KEY: "change-me-in-production"
-      BRANDFETCH_CLIENT_ID: "" # ไม่บังคับ: ใส่ Client ID เพื่อแสดงโลโก้แบรนด์
+      PB_ENCRYPTION_KEY: ${PB_ENCRYPTION_KEY}
+      BRANDFETCH_CLIENT_ID: ${BRANDFETCH_CLIENT_ID:-}
     volumes:
       - ./zublo-data:/pb/pb_data
 ```
 
-เริ่มรัน:
+**3. เริ่มรัน**
 
 ```bash
 docker compose up -d
 ```
+
+หรือใช้ Docker อย่างเดียว:
+
+```bash
+docker run -d --name zublo --restart unless-stopped \
+  -p 9597:9597 \
+  -e PB_ENCRYPTION_KEY=ใส่ข้อความสุ่มยาวๆ \
+  -e BRANDFETCH_CLIENT_ID= \
+  -v "$(pwd)/zublo-data:/pb/pb_data" \
+  ghcr.io/exodaz/zublo:latest
+```
+
+**อัปเดตเวอร์ชัน**
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+ฐานข้อมูลจะ migrate อัตโนมัติตอนเริ่มรัน ควรสำรองโฟลเดอร์ `zublo-data` ก่อนอัปเดตข้ามเวอร์ชัน
+
+**ย้ายมาจาก image ต้นฉบับ**
+
+เปลี่ยน `image:` เป็น `ghcr.io/exodaz/zublo:latest` แล้วใช้ volume `pb_data` เดิมได้เลย migration ใหม่แค่เพิ่มคอลัมน์และตาราง ข้อมูลเดิมไม่หาย
 
 จากนั้นเปิด:
 
