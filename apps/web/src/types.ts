@@ -171,6 +171,21 @@ export interface Household {
   user: string;
 }
 
+/** A person a subscription is shared with (family plans and the like). */
+export interface SubscriptionMember {
+  id: string;
+  subscription: string;
+  user: string;
+  name: string;
+  email?: string;
+  /** What this member pays, in the subscription's currency. Informational only. */
+  amount?: number;
+  /** Date the member's access ends; empty means no expiry. */
+  expires_at?: string;
+  notes?: string;
+  created?: string;
+}
+
 export interface Cycle {
   id: string;
   name: "Daily" | "Weekly" | "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly" | "One-Time";

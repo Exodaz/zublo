@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, useRef, useState } from "react";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SubscriptionFormModal } from "@/components/SubscriptionFormModal";
 import { SubscriptionHistoryDialog } from "@/components/subscriptions/SubscriptionHistoryDialog";
+import { SubscriptionMembersDialog } from "@/components/subscriptions/SubscriptionMembersDialog";
 import { SubscriptionsFiltersPanel } from "@/components/subscriptions/SubscriptionsFiltersPanel";
 import { SubscriptionsGrid } from "@/components/subscriptions/SubscriptionsGrid";
 import {
@@ -22,8 +23,9 @@ import { categoriesService } from "@/services/categories";
 import { currenciesService } from "@/services/currencies";
 import { householdService } from "@/services/household";
 import { paymentMethodsService } from "@/services/paymentMethods";
+import { subscriptionMembersService } from "@/services/subscriptionMembers";
 import { subscriptionsService } from "@/services/subscriptions";
-import type { Subscription } from "@/types";
+import type { Subscription, SubscriptionMember } from "@/types";
 
 export function SubscriptionsPage() {
   const { t } = useTranslation();
@@ -38,6 +40,7 @@ export function SubscriptionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editSubscription, setEditSubscription] = useState<Subscription | null>(null);
   const [historySubscription, setHistorySubscription] = useState<Subscription | null>(null);
+  const [membersSubscription, setMembersSubscription] = useState<Subscription | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -73,6 +76,20 @@ export function SubscriptionsPage() {
     queryFn: () => householdService.list(userId),
     enabled: !!userId,
   });
+
+  const { data: members = [] } = useQuery({
+    queryKey: queryKeys.subscriptions.members(userId),
+    queryFn: () => subscriptionMembersService.list(userId),
+    enabled: !!userId,
+  });
+
+  const membersBySubscription = useMemo(() => {
+    const grouped: Record<string, SubscriptionMember[]> = {};
+    for (const member of members) {
+      (grouped[member.subscription] ??= []).push(member);
+    }
+    return grouped;
+  }, [members]);
 
   const mainCurrency = currencies.find((currency) => currency.is_main);
 
@@ -247,7 +264,9 @@ export function SubscriptionsPage() {
         onClone={(id) => cloneMutation.mutate(id)}
         onRenew={(id) => renewMutation.mutate(id)}
         onHistory={setHistorySubscription}
+        onMembers={setMembersSubscription}
         onDelete={setDeleteId}
+        membersBySubscription={membersBySubscription}
       />
 
       {showForm ? (
@@ -273,6 +292,15 @@ export function SubscriptionsPage() {
           sub={historySubscription}
           userId={userId}
           onClose={() => setHistorySubscription(null)}
+        />
+      ) : null}
+
+      {membersSubscription ? (
+        <SubscriptionMembersDialog
+          sub={membersSubscription}
+          userId={userId}
+          members={membersBySubscription[membersSubscription.id] ?? []}
+          onClose={() => setMembersSubscription(null)}
         />
       ) : null}
 

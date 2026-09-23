@@ -263,6 +263,131 @@ cronAdd("sendCancellationNotifications", "0 * * * *", () => {
 
 
 // ================================================================
+// CRON 9: Send Family-Sharing Member Expiry Notifications (hourly)
+// ================================================================
+cronAdd("sendMemberExpiryNotifications", "0 * * * *", () => {
+  const dateHelpers = require(__hooks + "/lib/date-helpers.js");
+  const { memberExpiryStatus } = require(__hooks + "/lib/pure/member-expiry.js");
+  const { normalizeReminderSlots } = require(__hooks + "/lib/pure/reminder-slots.js");
+  const notifHelpers = require(__hooks + "/lib/notifications.js");
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentHour = now.getHours();
+  const todayStr = dateHelpers.formatLocalDate(today);
+
+  let allMembers = [];
+  try {
+    allMembers = $app.findRecordsByFilter(
+      "subscription_members", "expires_at != ''", "", 0, 0
+    );
+  } catch (e) {
+    console.log("[Zublo] member expiry lookup error:", e);
+    return;
+  }
+
+  // Group by user
+  const byUser = {};
+  for (const member of allMembers) {
+    const uid = member.getString("user");
+    if (!byUser[uid]) byUser[uid] = [];
+    byUser[uid].push(member);
+  }
+
+  for (const userId in byUser) {
+    const configs = $app.findRecordsByFilter(
+      "notifications_config", "user = {:userId}", "", 1, 0, { userId: userId }
+    );
+    if (configs.length === 0) continue;
+    const notifConfig = configs[0];
+
+    // getString hands over the JSON text; get() returns an opaque JSON value
+    // that normalizeReminderSlots cannot read, silently falling back to 3d/8h.
+    let reminders = [{ days: 3, hour: 8 }];
+    try {
+      reminders = normalizeReminderSlots(notifConfig.getString("reminders"));
+    } catch (_) {}
+
+    const dueReminders = reminders.filter((r) => Number(r.hour) === currentHour);
+    if (dueReminders.length === 0) continue;
+
+    // Subscription lookups are shared by every reminder slot of this user.
+    const subCache = {};
+    const findSub = (id) => {
+      if (!(id in subCache)) {
+        try {
+          subCache[id] = $app.findRecordById("subscriptions", id);
+        } catch (_) {
+          subCache[id] = null;
+        }
+      }
+      return subCache[id];
+    };
+
+    for (const reminder of dueReminders) {
+      const days = Number(reminder.days);
+      if (!isFinite(days)) continue;
+      const reminderKey = "member_" + days + "d_" + currentHour + "h";
+
+      const dueMembers = [];
+      for (const member of byUser[userId]) {
+        const expiry = memberExpiryStatus(member.getString("expires_at"), todayStr);
+        if (expiry.daysLeft !== days) continue;
+
+        const sub = findSub(member.getString("subscription"));
+        if (!sub || sub.getBool("inactive")) continue;
+
+        try {
+          const existing = $app.findRecordsByFilter(
+            "notification_log",
+            "subscription_id = {:sid} && user_id = {:uid} && reminder_key = {:key} && sent_date = {:date}",
+            "", 1, 0, { sid: member.id, uid: userId, key: reminderKey, date: todayStr }
+          );
+          if (existing.length > 0) continue;
+        } catch (_) {}
+
+        dueMembers.push({
+          id: member.id,
+          name: member.getString("name"),
+          email: member.getString("email"),
+          subscription: sub.getString("name"),
+          expires_at: member.getString("expires_at").slice(0, 10),
+        });
+      }
+
+      if (dueMembers.length === 0) continue;
+
+      const daysLabel = days === 0 ? "today" : "in " + days + " day(s)";
+      const title = "👥 Zublo — Family Members Expiring";
+      let message = "Shared memberships expiring " + daysLabel + ":\n\n";
+      for (const m of dueMembers) {
+        message += "• **" + m.name + "**";
+        if (m.email) message += " (" + m.email + ")";
+        message += " — " + m.subscription + " (expires: " + m.expires_at + ")\n";
+      }
+
+      notifHelpers.dispatchToAllProviders($app, notifConfig, title, message, dueMembers);
+
+      const logCol = $app.findCollectionByNameOrId("notification_log");
+      for (const m of dueMembers) {
+        try {
+          const log = new Record(logCol);
+          log.set("subscription_id", m.id);
+          log.set("user_id", userId);
+          log.set("reminder_key", reminderKey);
+          log.set("sent_date", todayStr);
+          $app.save(log);
+        } catch (e) {
+          console.log("[Zublo] member log write error:", e);
+        }
+      }
+    }
+  }
+
+  console.log("[Zublo] sendMemberExpiryNotifications: completed for hour " + currentHour);
+});
+
+
+// ================================================================
 // CRON 7: Auto-mark Payments as Paid
 // ================================================================
 // Five minutes after schedule advancement. updateNextPayment records due

@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SubscriptionCard } from "@/components/subscriptions/SubscriptionCard";
-import type { Currency, Subscription } from "@/types";
+import type { Currency, Subscription, SubscriptionMember } from "@/types";
 
 function SubscriptionsLoadingGrid({ layout }: { layout: "grid" | "list" }) {
   if (layout === "list") {
@@ -56,7 +56,10 @@ interface SubscriptionsGridProps {
   onClone: (id: string) => void;
   onRenew: (id: string) => void;
   onHistory: (subscription: Subscription) => void;
+  onMembers: (subscription: Subscription) => void;
   onDelete: (id: string) => void;
+  /** Family-sharing members keyed by subscription id. */
+  membersBySubscription?: Record<string, SubscriptionMember[]>;
 }
 
 export function SubscriptionsGrid({
@@ -71,7 +74,9 @@ export function SubscriptionsGrid({
   onClone,
   onRenew,
   onHistory,
+  onMembers,
   onDelete,
+  membersBySubscription = {},
 }: SubscriptionsGridProps) {
   if (isLoading) {
     return <SubscriptionsLoadingGrid layout={layout} />;
@@ -100,7 +105,9 @@ export function SubscriptionsGrid({
           onClone={() => onClone(subscription.id)}
           onRenew={() => onRenew(subscription.id)}
           onHistory={() => onHistory(subscription)}
+          onMembers={() => onMembers(subscription)}
           onDelete={() => onDelete(subscription.id)}
+          members={membersBySubscription[subscription.id]}
         />
       ))}
     </div>

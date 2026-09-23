@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   listCategories: vi.fn(),
   listPaymentMethods: vi.fn(),
   listHousehold: vi.fn(),
+  listMembers: vi.fn(),
   deleteSubscription: vi.fn(),
   cloneSubscription: vi.fn(),
   renewSubscription: vi.fn(),
@@ -78,6 +79,12 @@ vi.mock("@/services/paymentMethods", () => ({
 vi.mock("@/services/household", () => ({
   householdService: {
     list: mocks.listHousehold,
+  },
+}));
+
+vi.mock("@/services/subscriptionMembers", () => ({
+  subscriptionMembersService: {
+    list: mocks.listMembers,
   },
 }));
 
@@ -228,7 +235,9 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onClone,
     onRenew,
     onHistory,
+    onMembers,
     onDelete,
+    membersBySubscription,
   }: {
     subscriptions: Array<{ id: string; name: string }>;
     layout: "grid" | "list";
@@ -236,10 +245,18 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onClone: (id: string) => void;
     onRenew: (id: string) => void;
     onHistory: (subscription: { id: string; name: string }) => void;
+    onMembers: (subscription: { id: string; name: string }) => void;
     onDelete: (id: string) => void;
+    membersBySubscription: Record<string, unknown[]>;
   }) => (
     <div>
       <div>grid:{subscriptions.length}</div>
+      <div>
+        grouped:
+        {Object.entries(membersBySubscription)
+          .map(([id, list]) => `${id}=${list.length}`)
+          .join(",")}
+      </div>
       <div>layout:{layout}</div>
       <button type="button" onClick={() => onEdit(subscriptions[0])}>
         edit-subscription
@@ -252,6 +269,12 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
       </button>
       <button type="button" onClick={() => onHistory(subscriptions[0])}>
         history-subscription
+      </button>
+      <button type="button" onClick={() => onMembers(subscriptions[0])}>
+        members-subscription
+      </button>
+      <button type="button" onClick={() => onMembers({ id: "sub-none", name: "Empty" })}>
+        members-empty-subscription
       </button>
       <button type="button" onClick={() => onDelete(subscriptions[0].id)}>
         delete-subscription
@@ -299,6 +322,27 @@ vi.mock("@/components/subscriptions/SubscriptionHistoryDialog", () => ({
   ),
 }));
 
+vi.mock("@/components/subscriptions/SubscriptionMembersDialog", () => ({
+  SubscriptionMembersDialog: ({
+    sub,
+    members,
+    onClose,
+  }: {
+    sub: { name: string };
+    members: unknown[];
+    onClose: () => void;
+  }) => (
+    <div>
+      <div>
+        members:{sub.name}:{members.length}
+      </div>
+      <button type="button" onClick={onClose}>
+        close-members
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock("@/components/ui/confirm-dialog", () => ({
   ConfirmDialog: ({
     open,
@@ -341,6 +385,7 @@ describe("SubscriptionsPage", () => {
     mocks.listCategories.mockResolvedValue([{ id: "cat-1", name: "Streaming" }]);
     mocks.listPaymentMethods.mockResolvedValue([{ id: "pm-1", name: "Visa" }]);
     mocks.listHousehold.mockResolvedValue([{ id: "hh-1", name: "Daniel" }]);
+    mocks.listMembers.mockResolvedValue([]);
     mocks.deleteSubscription.mockResolvedValue(undefined);
     mocks.cloneSubscription.mockResolvedValue(undefined);
     mocks.renewSubscription.mockResolvedValue(undefined);
@@ -575,6 +620,28 @@ describe("SubscriptionsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "close-history" }));
     expect(screen.queryByText("history:Netflix")).not.toBeInTheDocument();
+  });
+
+  it("groups members per subscription and opens the members dialog", async () => {
+    mocks.listMembers.mockResolvedValue([
+      { id: "m-1", subscription: "sub-1", name: "Alice" },
+      { id: "m-2", subscription: "sub-1", name: "Bob" },
+      { id: "m-3", subscription: "sub-2", name: "Carol" },
+    ]);
+    const { Wrapper } = createQueryClientWrapper();
+    render(<SubscriptionsPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByText("grouped:sub-1=2,sub-2=1"));
+    expect(mocks.listMembers).toHaveBeenCalledWith("user-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "members-subscription" }));
+    expect(screen.getByText("members:Netflix:2")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "close-members" }));
+    expect(screen.queryByText("members:Netflix:2")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "members-empty-subscription" }));
+    expect(screen.getByText("members:Empty:0")).toBeInTheDocument();
   });
 
   it("renders with empty userId when user is null (covers user?.id ?? '' fallback)", () => {

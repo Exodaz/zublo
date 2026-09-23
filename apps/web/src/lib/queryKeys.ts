@@ -20,6 +20,9 @@ export const queryKeys = {
     // unaffected by edits to any other.
     history: (userId: string, subscriptionId: string) =>
       ["subscription-history", userId, subscriptionId] as const,
+    // Every member of every subscription of the user: the page fetches them
+    // once and groups them per card instead of querying per subscription.
+    members: (userId: string) => ["subscription-members", userId] as const,
   },
 
   // ─── Currencies ───────────────────────────────────────────────────────────

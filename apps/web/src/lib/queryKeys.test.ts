@@ -23,6 +23,10 @@ describe("queryKeys", () => {
       "user-1",
       "sub-1",
     ]);
+    expect(queryKeys.subscriptions.members("user-1")).toEqual([
+      "subscription-members",
+      "user-1",
+    ]);
     expect(queryKeys.currencies.all("user-1")).toEqual([
       "currencies",
       "user-1",

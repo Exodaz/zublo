@@ -7,6 +7,7 @@ import {
   Hourglass,
   RefreshCw,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
+import { type MemberExpiryStatus, worstMemberStatus } from "@/lib/memberExpiry";
 import { isCredit } from "@/lib/recordTypes";
 import {
   cn,
@@ -27,7 +29,7 @@ import {
 } from "@/lib/utils";
 import { paymentMethodsService } from "@/services/paymentMethods";
 import { subscriptionsService } from "@/services/subscriptions";
-import type { Currency, PaymentMethod, Subscription } from "@/types";
+import type { Currency, PaymentMethod, Subscription, SubscriptionMember } from "@/types";
 
 // ── Payment method icon helpers ───────────────────────────────────────────────
 
@@ -117,6 +119,7 @@ interface SubscriptionActionsProps {
   onClone: () => void;
   onRenew: () => void;
   onHistory: () => void;
+  onMembers: () => void;
   onDelete: () => void;
 }
 
@@ -127,6 +130,7 @@ function SubscriptionActions({
   onClone,
   onRenew,
   onHistory,
+  onMembers,
   onDelete,
 }: SubscriptionActionsProps) {
   const { t } = useTranslation();
@@ -177,6 +181,15 @@ function SubscriptionActions({
       >
         <History className="h-3.5 w-3.5" />
       </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 rounded-full text-muted-foreground hover:bg-sky-500/10 hover:text-sky-500"
+        onClick={onMembers}
+        title={t("members")}
+      >
+        <Users className="h-3.5 w-3.5" />
+      </Button>
       {/* Renewing an inactive subscription is a no-op on the backend — it
           refuses to advance a paused or finished schedule — so offering the
           action here would just be a button that does nothing. */}
@@ -204,6 +217,42 @@ function SubscriptionActions({
   );
 }
 
+// ── Family-sharing members chip ───────────────────────────────────────────────
+
+const MEMBER_CHIP_TONE: Record<MemberExpiryStatus, string> = {
+  none: "bg-muted text-muted-foreground",
+  active: "bg-muted text-muted-foreground",
+  expiring: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  expired: "bg-destructive/10 text-destructive",
+};
+
+function MembersChip({
+  members,
+  onClick,
+}: {
+  members: SubscriptionMember[];
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const status = worstMemberStatus(members);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={t("members")}
+      aria-label={t("members_count", { count: members.length })}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        MEMBER_CHIP_TONE[status],
+      )}
+    >
+      <Users className="h-3 w-3" aria-hidden />
+      {members.length}
+    </button>
+  );
+}
+
 // ── SubscriptionCard ──────────────────────────────────────────────────────────
 
 export function SubscriptionCard({
@@ -216,7 +265,9 @@ export function SubscriptionCard({
   onClone,
   onRenew,
   onHistory,
+  onMembers,
   onDelete,
+  members = [],
   layout = "grid",
 }: {
   sub: Subscription;
@@ -229,7 +280,9 @@ export function SubscriptionCard({
   onClone: () => void;
   onRenew: () => void;
   onHistory: () => void;
+  onMembers: () => void;
   onDelete: () => void;
+  members?: SubscriptionMember[];
   layout?: "grid" | "list";
 }) {
   const { t } = useTranslation();
@@ -325,6 +378,7 @@ export function SubscriptionCard({
             {payer ? (
               <span className="truncate font-medium text-foreground/80">{payer.name}</span>
             ) : null}
+            {members.length > 0 ? <MembersChip members={members} onClick={onMembers} /> : null}
           </div>
 
           <SubscriptionActions
@@ -334,6 +388,7 @@ export function SubscriptionCard({
             onClone={onClone}
             onRenew={onRenew}
             onHistory={onHistory}
+            onMembers={onMembers}
             onDelete={onDelete}
           />
         </div>
@@ -461,6 +516,7 @@ export function SubscriptionCard({
               {t("pays")} {payer.name}
             </span>
           )}
+          {members.length > 0 && <MembersChip members={members} onClick={onMembers} />}
         </div>
 
         <SubscriptionActions
@@ -470,6 +526,7 @@ export function SubscriptionCard({
           onClone={onClone}
           onRenew={onRenew}
           onHistory={onHistory}
+          onMembers={onMembers}
           onDelete={onDelete}
         />
       </div>

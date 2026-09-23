@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import type { Currency, PaymentMethod, Subscription } from "@/types";
+import type { Currency, PaymentMethod, Subscription, SubscriptionMember } from "@/types";
 
 const mocks = vi.hoisted(() => ({
   paymentIconUrl: vi.fn(),
@@ -114,6 +114,7 @@ describe("SubscriptionCard", () => {
     const onClone = vi.fn();
     const onRenew = vi.fn();
     const onHistory = vi.fn();
+    const onMembers = vi.fn();
     const onDelete = vi.fn();
 
     render(
@@ -127,6 +128,7 @@ describe("SubscriptionCard", () => {
         onClone={onClone}
         onRenew={onRenew}
         onHistory={onHistory}
+        onMembers={onMembers}
         onDelete={onDelete}
       />,
     );
@@ -151,6 +153,7 @@ describe("SubscriptionCard", () => {
     fireEvent.click(screen.getByTitle("clone"));
     fireEvent.click(screen.getByTitle("renew"));
     fireEvent.click(screen.getByTitle("history"));
+    fireEvent.click(screen.getByTitle("members"));
     fireEvent.click(screen.getByTitle("delete"));
 
     expect(mocks.windowOpen).toHaveBeenCalledWith("https://example.com/netflix", "_blank");
@@ -158,6 +161,7 @@ describe("SubscriptionCard", () => {
     expect(onClone).toHaveBeenCalledTimes(1);
     expect(onRenew).toHaveBeenCalledTimes(1);
     expect(onHistory).toHaveBeenCalledTimes(1);
+    expect(onMembers).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
@@ -169,6 +173,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -182,6 +187,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -195,6 +201,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -208,6 +215,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -230,6 +238,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -254,6 +263,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -275,6 +285,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -309,6 +320,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={onRenew}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -338,6 +350,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -360,6 +373,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -384,6 +398,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -400,6 +415,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -420,6 +436,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -437,6 +454,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -464,6 +482,7 @@ describe("SubscriptionCard", () => {
         onClone={vi.fn()}
         onRenew={vi.fn()}
         onHistory={vi.fn()}
+        onMembers={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -482,6 +501,7 @@ describe("SubscriptionCard", () => {
       onClone: vi.fn(),
       onRenew: vi.fn(),
       onHistory: vi.fn(),
+      onMembers: vi.fn(),
       onDelete: vi.fn(),
     };
 
@@ -584,6 +604,82 @@ describe("SubscriptionCard", () => {
 
       expect(screen.getByText("received_on")).toBeInTheDocument();
       expect(screen.getByAltText("Bonus")).not.toHaveAttribute("src", expect.stringMatching(/./));
+    });
+  });
+
+  describe("family-sharing members chip", () => {
+    const member = (overrides: Partial<SubscriptionMember> = {}): SubscriptionMember => ({
+      id: "m-1",
+      subscription: "sub-1",
+      user: "user-1",
+      name: "Alice",
+      ...overrides,
+    });
+    const inDays = (days: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + days);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    };
+    const handlers = {
+      onEdit: vi.fn(),
+      onClone: vi.fn(),
+      onRenew: vi.fn(),
+      onHistory: vi.fn(),
+      onDelete: vi.fn(),
+    };
+
+    it("hides the chip when the subscription has no members", () => {
+      render(<SubscriptionCard sub={getSubscription()} onMembers={vi.fn()} {...handlers} />);
+
+      expect(screen.queryByLabelText("members_count")).not.toBeInTheDocument();
+    });
+
+    it("shows the member count on the grid card, tinted by the most urgent expiry", () => {
+      const onMembers = vi.fn();
+      const { rerender } = render(
+        <SubscriptionCard
+          sub={getSubscription()}
+          members={[member(), member({ id: "m-2", expires_at: "2999-01-01" })]}
+          onMembers={onMembers}
+          {...handlers}
+        />,
+      );
+
+      const chip = screen.getByLabelText("members_count");
+      expect(chip).toHaveTextContent("2");
+      expect(chip).toHaveClass("bg-muted");
+      fireEvent.click(chip);
+      expect(onMembers).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <SubscriptionCard
+          sub={getSubscription()}
+          members={[member({ expires_at: "2000-01-01" }), member({ id: "m-2", expires_at: inDays(2) })]}
+          onMembers={onMembers}
+          {...handlers}
+        />,
+      );
+      expect(screen.getByLabelText("members_count")).toHaveClass("text-destructive");
+    });
+
+    it("shows the chip in the list row and flags members expiring soon", () => {
+      const onMembers = vi.fn();
+      render(
+        <SubscriptionCard
+          sub={getSubscription()}
+          layout="list"
+          members={[member({ expires_at: inDays(2) })]}
+          onMembers={onMembers}
+          {...handlers}
+        />,
+      );
+
+      const chip = screen.getByLabelText("members_count");
+      expect(chip).toHaveTextContent("1");
+      expect(chip).toHaveClass("text-amber-700");
+      fireEvent.click(chip);
+      expect(onMembers).toHaveBeenCalledTimes(1);
     });
   });
 });

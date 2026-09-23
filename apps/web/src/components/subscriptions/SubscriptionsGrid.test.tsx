@@ -59,6 +59,7 @@ const baseHandlers = {
   onClone: vi.fn(),
   onRenew: vi.fn(),
   onHistory: vi.fn(),
+  onMembers: vi.fn(),
   onDelete: vi.fn(),
 };
 
@@ -142,7 +143,25 @@ describe("SubscriptionsGrid", () => {
     fireEvent.click(screen.getByTitle("history"));
     expect(baseHandlers.onHistory).toHaveBeenCalledWith(sub);
 
+    fireEvent.click(screen.getByTitle("members"));
+    expect(baseHandlers.onMembers).toHaveBeenCalledWith(sub);
+
     fireEvent.click(screen.getByTitle("delete"));
     expect(baseHandlers.onDelete).toHaveBeenCalledWith(sub.id);
+  });
+
+  it("passes each subscription its own family-sharing members", () => {
+    render(
+      <SubscriptionsGrid
+        isLoading={false}
+        subscriptions={[getSub(), getSub({ id: "sub-2", name: "Spotify" })]}
+        membersBySubscription={{
+          "sub-1": [{ id: "m-1", subscription: "sub-1", user: "user-1", name: "Alice" }],
+        }}
+        {...baseHandlers}
+      />,
+    );
+
+    expect(screen.getAllByLabelText("members_count")).toHaveLength(1);
   });
 });
