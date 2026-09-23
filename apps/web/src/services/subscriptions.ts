@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { brandLogoUrl } from "@/lib/brandLogo";
 import pb from "@/lib/pb";
 import type { Subscription } from "@/types";
 
@@ -49,8 +50,12 @@ export const subscriptionsService = {
       { subscriptions }
     ),
 
+  /**
+   * Uploaded logo first, then the Brandfetch logo of `brand_domain`, then of
+   * the subscription's own URL so older records get a logo without editing.
+   */
   logoUrl: (sub: Subscription): string | null => {
-    if (!sub.logo) return null;
+    if (!sub.logo) return brandLogoUrl(sub.brand_domain) ?? brandLogoUrl(sub.url);
     return pb.files.getUrl(
       { collectionId: "subscriptions", id: sub.id } as Parameters<typeof pb.files.getUrl>[0],
       sub.logo,

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   listCategories: vi.fn(),
   listPaymentMethods: vi.fn(),
   listHousehold: vi.fn(),
+  listMembers: vi.fn(),
   listPaymentRecords: vi.fn(),
   useCalendarMonthData: vi.fn(),
   getPaymentRecord: vi.fn(),
@@ -65,6 +66,12 @@ vi.mock("@/services/paymentMethods", () => ({
 vi.mock("@/services/household", () => ({
   householdService: {
     list: mocks.listHousehold,
+  },
+}));
+
+vi.mock("@/services/subscriptionMembers", () => ({
+  subscriptionMembersService: {
+    list: mocks.listMembers,
   },
 }));
 
@@ -154,14 +161,25 @@ vi.mock("@/components/calendar/DayPanel", () => ({
   DayPanel: ({
     day,
     onSelectEntry,
+    memberExpiries,
+    onSelectMemberExpiry,
     onClose,
   }: {
     day: number;
     onSelectEntry: (entry: { sub: { id: string; name: string }; date: Date }) => void;
+    memberExpiries: Array<{ member: { id: string }; sub: { id: string; name: string } }>;
+    onSelectMemberExpiry: (entry: {
+      member: { id: string };
+      sub: { id: string; name: string };
+    }) => void;
     onClose: () => void;
   }) => (
     <div>
       <div>day-panel:{day}</div>
+      <div>member-expiries:{memberExpiries.length}</div>
+      <button type="button" onClick={() => onSelectMemberExpiry(memberExpiries[0])}>
+        open-member-expiry
+      </button>
       <button
         type="button"
         onClick={() =>
@@ -223,6 +241,27 @@ vi.mock("@/components/calendar/MarkAsPaidModal", () => ({
   ),
 }));
 
+vi.mock("@/components/subscriptions/SubscriptionMembersDialog", () => ({
+  SubscriptionMembersDialog: ({
+    sub,
+    members,
+    onClose,
+  }: {
+    sub: { name: string };
+    members: Array<{ name: string }>;
+    onClose: () => void;
+  }) => (
+    <div>
+      <div>
+        members-dialog:{sub.name}:{members.map((member) => member.name).join(",")}
+      </div>
+      <button type="button" onClick={onClose}>
+        close-members
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock("@/components/SubscriptionFormModal", () => ({
   SubscriptionFormModal: ({
     sub,
@@ -273,6 +312,10 @@ describe("CalendarPage", () => {
     mocks.listCategories.mockResolvedValue([{ id: "cat-1", name: "Streaming" }]);
     mocks.listPaymentMethods.mockResolvedValue([{ id: "pm-1", name: "Visa" }]);
     mocks.listHousehold.mockResolvedValue([{ id: "hh-1", name: "Daniel" }]);
+    mocks.listMembers.mockResolvedValue([
+      { id: "m-1", subscription: "sub-1", name: "Alice" },
+      { id: "m-2", subscription: "sub-2", name: "Bob" },
+    ]);
     mocks.listPaymentRecords.mockResolvedValue([
       {
         id: "pr-1",
@@ -302,6 +345,10 @@ describe("CalendarPage", () => {
         ],
       },
       mainCurrency: { id: "cur-1", symbol: "$" },
+      memberExpiriesByDay: {},
+      selectedMemberExpiries: [
+        { member: { id: "m-1" }, sub: { id: "sub-1", name: "Netflix" } },
+      ],
       selectedDayTotal: 10,
       selectedEntries: [
         {
@@ -445,6 +492,32 @@ describe("CalendarPage", () => {
     // Here we assert that it renders without crashing (paymentTracking branch covered)
 
     errorSpy.mockRestore();
+  });
+
+  it("passes members to the month data and opens the members dialog from a member expiry", async () => {
+    const { Wrapper } = createQueryClientWrapper();
+    render(<CalendarPage />, { wrapper: Wrapper });
+
+    await waitFor(() => expect(mocks.listMembers).toHaveBeenCalledWith("user-1"));
+    await waitFor(() =>
+      expect(mocks.useCalendarMonthData).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          members: [
+            { id: "m-1", subscription: "sub-1", name: "Alice" },
+            { id: "m-2", subscription: "sub-2", name: "Bob" },
+          ],
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "select-day" }));
+    expect(screen.getByText("member-expiries:1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "open-member-expiry" }));
+    expect(screen.getByText("members-dialog:Netflix:Alice")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "close-members" }));
+    expect(screen.queryByText(/members-dialog/)).not.toBeInTheDocument();
   });
 
   it("handles user = null", () => {

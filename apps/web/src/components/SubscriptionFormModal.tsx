@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -31,12 +32,15 @@ import {
   CYCLE_NAME_KEYS,
   formatBillingPeriod,
 } from "@/lib/billingPeriods";
+import { brandLogoUrl } from "@/lib/brandLogo";
 import { compressImage } from "@/lib/image";
 import { ONE_TIME_CYCLE } from "@/lib/recordTypes";
+import type { ServicePreset } from "@/lib/serviceCatalog";
 import { toast } from "@/lib/toast";
 import { subscriptionsService } from "@/services/subscriptions";
 import type { Category, Currency, Household, PaymentMethod, Subscription } from "@/types";
 
+import { ServicePicker } from "./ServicePicker";
 import { SubscriptionLogoSection } from "./SubscriptionLogoSection";
 
 interface Props {
@@ -74,6 +78,26 @@ export function SubscriptionFormModal({
     selectedCurrency,
     formState: { errors, isSubmitting },
   } = useSubscriptionForm({ sub, currencies, household });
+
+  // Set once the user picks or clears a service in this session, so an
+  // uploaded logo that would hide the new brand logo can be dropped on save.
+  const [brandChanged, setBrandChanged] = useState(false);
+  const watchedBrandDomain = watch("brand_domain");
+
+  const handleServiceSelect = (preset: ServicePreset) => {
+    setValue("brand_domain", preset.domain);
+    if (preset.name && !watch("name").trim()) {
+      setValue("name", preset.name, { shouldValidate: true });
+    }
+    if (!watch("url").trim()) setValue("url", preset.url);
+    logo.resetLogo();
+    setBrandChanged(true);
+  };
+
+  const handleServiceClear = () => {
+    setValue("brand_domain", "");
+    setBrandChanged(true);
+  };
 
   const watchedNotify = watch("notify");
   const watchedInactive = watch("inactive");
@@ -117,10 +141,12 @@ export function SubscriptionFormModal({
         next_payment: data.next_payment,
         start_date: data.start_date,
         payment_method: data.payment_method || null,
+        payment_account: data.payment_account.trim(),
         payer: data.payer || null,
         category: data.category || null,
         notes: data.notes,
         url: data.url,
+        brand_domain: data.brand_domain,
         auto_renew: isCredit ? false : data.end_mode === "never" ? data.auto_renew : true,
         notify: isCredit ? false : data.notify,
         notify_days_before: parseInt(data.notify_days_before),
@@ -173,6 +199,9 @@ export function SubscriptionFormModal({
           result = await subscriptionsService.create(formData);
         }
       } else {
+        // A freshly chosen service should show its brand logo, which an
+        // uploaded logo from before would otherwise keep hiding.
+        if (sub?.logo && brandChanged && data.brand_domain) body.logo = null;
         if (sub) {
           result = await subscriptionsService.update(sub.id, body);
         } else {
@@ -252,6 +281,13 @@ export function SubscriptionFormModal({
             </p>
           </div>
 
+          {/* Service (brand logo) */}
+          <ServicePicker
+            value={watchedBrandDomain}
+            onSelect={handleServiceSelect}
+            onClear={handleServiceClear}
+          />
+
           {/* Name */}
           <div className="space-y-2">
             <Label>{t("name")} *</Label>
@@ -260,7 +296,7 @@ export function SubscriptionFormModal({
           </div>
 
           {/* Logo section */}
-          <SubscriptionLogoSection {...logo} />
+          <SubscriptionLogoSection {...logo} brandLogoSrc={brandLogoUrl(watchedBrandDomain)} />
 
           {/* Price + Currency */}
           <div className="grid grid-cols-2 gap-3">
@@ -523,6 +559,17 @@ export function SubscriptionFormModal({
                   </SelectContent>
                 </Select>
               )}
+            />
+          </div>
+
+          {/* Payment account */}
+          <div className="space-y-2">
+            <Label htmlFor="payment-account">{t("payment_account")}</Label>
+            <Input
+              id="payment-account"
+              {...register("payment_account")}
+              placeholder={t("payment_account_placeholder")}
+              autoComplete="off"
             />
           </div>
 

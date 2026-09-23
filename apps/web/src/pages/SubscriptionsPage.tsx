@@ -3,6 +3,7 @@ import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SubscriptionFormModal } from "@/components/SubscriptionFormModal";
+import { SubscriptionDetailDialog } from "@/components/subscriptions/SubscriptionDetailDialog";
 import { SubscriptionHistoryDialog } from "@/components/subscriptions/SubscriptionHistoryDialog";
 import { SubscriptionMembersDialog } from "@/components/subscriptions/SubscriptionMembersDialog";
 import { SubscriptionsFiltersPanel } from "@/components/subscriptions/SubscriptionsFiltersPanel";
@@ -41,6 +42,7 @@ export function SubscriptionsPage() {
   const [editSubscription, setEditSubscription] = useState<Subscription | null>(null);
   const [historySubscription, setHistorySubscription] = useState<Subscription | null>(null);
   const [membersSubscription, setMembersSubscription] = useState<Subscription | null>(null);
+  const [detailSubscription, setDetailSubscription] = useState<Subscription | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -266,6 +268,7 @@ export function SubscriptionsPage() {
         onHistory={setHistorySubscription}
         onMembers={setMembersSubscription}
         onDelete={setDeleteId}
+        onOpen={setDetailSubscription}
         membersBySubscription={membersBySubscription}
       />
 
@@ -292,6 +295,27 @@ export function SubscriptionsPage() {
           sub={historySubscription}
           userId={userId}
           onClose={() => setHistorySubscription(null)}
+        />
+      ) : null}
+
+      {detailSubscription ? (
+        <SubscriptionDetailDialog
+          sub={detailSubscription}
+          userId={userId}
+          members={membersBySubscription[detailSubscription.id] ?? []}
+          onClose={() => setDetailSubscription(null)}
+          onEdit={() => {
+            setDetailSubscription(null);
+            handleEdit(detailSubscription);
+          }}
+          onMembers={() => {
+            setDetailSubscription(null);
+            setMembersSubscription(detailSubscription);
+          }}
+          onHistory={() => {
+            setDetailSubscription(null);
+            setHistorySubscription(detailSubscription);
+          }}
         />
       ) : null}
 

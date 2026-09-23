@@ -42,6 +42,7 @@ function getSubscription(overrides: Partial<Subscription> = {}): Subscription {
 describe("BudgetOverviewCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    logoUrl.mockReturnValue("https://cdn.example.com/logo.png");
   });
 
   it("renders budget usage, remaining budget, most expensive subscription, and subscription count", () => {
@@ -83,6 +84,7 @@ describe("BudgetOverviewCard", () => {
   });
 
   it("renders em-dash when totalMonthly is undefined and shows initials when mostExpensive has no logo", () => {
+    logoUrl.mockReturnValue(null);
     render(
       <BudgetOverviewCard
         budget={100}
@@ -127,8 +129,8 @@ describe("BudgetOverviewCard", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
-  it("uses empty string src when logoUrl returns null (line 118 ?? '' branch)", () => {
-    logoUrl.mockReturnValue(null);
+  it("shows the brand logo of a subscription without an uploaded one", () => {
+    logoUrl.mockReturnValue("/api/brand-logo?domain=netflix.com&size=128");
     render(
       <BudgetOverviewCard
         budget={100}
@@ -139,13 +141,16 @@ describe("BudgetOverviewCard", () => {
         mostExpensive={{
           name: "Netflix",
           monthly: 20,
-          logo: "logo.png",
+          logo: undefined,
           record: getSubscription(),
         }}
         formatValue={(value) => `$${value.toFixed(2)}`}
       />,
     );
-    expect(screen.getByAltText("Netflix")).toHaveAttribute("src", "");
+    expect(screen.getByAltText("Netflix")).toHaveAttribute(
+      "src",
+      "/api/brand-logo?domain=netflix.com&size=128",
+    );
   });
 
   it("renders the empty budget state and over-budget indicator", () => {

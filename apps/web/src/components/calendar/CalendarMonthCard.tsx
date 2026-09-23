@@ -1,4 +1,11 @@
-import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, CircleDot } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  Users,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { DOW_KEYS, MONTH_KEYS } from "@/components/calendar/constants";
@@ -7,6 +14,7 @@ import {
   getColorForSub,
   getLogoUrl,
   getPaymentRecord,
+  type MemberExpiryEntry,
   toDateStr,
   toMain,
 } from "@/components/calendar/types";
@@ -33,6 +41,7 @@ interface CalendarMonthCardProps {
   selectedDay: number | null;
   allCells: CalendarCell[];
   entriesByDay: Record<number, DayEntry[]>;
+  memberExpiriesByDay?: Record<number, MemberExpiryEntry[]>;
   mainCurrency?: Currency;
   currencyById: Map<string, Currency>;
   paymentTracking: boolean;
@@ -54,6 +63,7 @@ export function CalendarMonthCard({
   selectedDay,
   allCells,
   entriesByDay,
+  memberExpiriesByDay = {},
   mainCurrency,
   currencyById,
   paymentTracking,
@@ -145,8 +155,15 @@ export function CalendarMonthCard({
               new Date(year, month - 1, cell.day) <
                 new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const isSelected = !isOtherMonth && cell.day === selectedDay;
+            const memberExpiries = isOtherMonth ? [] : (memberExpiriesByDay[cell.day] ?? []);
             const visibleEntries = entries.slice(0, 3);
-            const overflow = entries.length - visibleEntries.length;
+            // Member expiries share the three visible slots, after payments.
+            const visibleMembers = memberExpiries.slice(0, 3 - visibleEntries.length);
+            const overflow =
+              entries.length +
+              memberExpiries.length -
+              visibleEntries.length -
+              visibleMembers.length;
 
             return (
               <button
@@ -263,6 +280,22 @@ export function CalendarMonthCard({
                         </div>
                       );
                     })}
+
+                    {visibleMembers.map(({ member, sub }) => (
+                      <div
+                        key={`member-${member.id}`}
+                        title={`${member.name} · ${sub.name}`}
+                        className="flex items-center gap-1.5 rounded-md border border-dashed border-sky-500/40 bg-sky-500/10 px-1.5 py-[3px] text-sky-700 dark:text-sky-400"
+                      >
+                        <Users className="h-3 w-3 shrink-0" aria-hidden />
+                        <span className="truncate text-[11px] font-medium leading-tight">
+                          {member.name}
+                        </span>
+                        <span className="ml-auto shrink-0 truncate text-[10px] opacity-70">
+                          {sub.name}
+                        </span>
+                      </div>
+                    ))}
 
                     {overflow > 0 ? (
                       <p className="pl-1 text-[10px] font-medium text-muted-foreground">

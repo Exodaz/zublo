@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 
-import type { Currency, Subscription } from "@/types";
+import type { Currency, Subscription, SubscriptionMember } from "@/types";
 
 import { useCalendarMonthData } from "./useCalendarMonthData";
 
@@ -238,5 +238,68 @@ describe("useCalendarMonthData", () => {
 
     expect(result2.current.selectedEntries).toEqual([]);
     expect(result2.current.selectedDayTotal).toBe(0);
+  });
+
+  it("groups member expiries of the visible month by day without touching the totals", () => {
+    const member = (overrides: Partial<SubscriptionMember>): SubscriptionMember => ({
+      id: "m-1",
+      subscription: "sub-1",
+      user: "user-1",
+      name: "Alice",
+      ...overrides,
+    });
+    const subscriptions = [getSubscription({ id: "sub-1", next_payment: "2026-04-05" })];
+    const members = [
+      member({ id: "m-1", expires_at: "2026-04-12 00:00:00.000Z" }),
+      member({ id: "m-2", expires_at: "2026-04-12" }),
+      member({ id: "m-3", expires_at: "2026-05-12" }),
+      member({ id: "m-4", expires_at: "2025-04-12" }),
+      member({ id: "m-5" }),
+      member({ id: "m-6", subscription: "gone", expires_at: "2026-04-20" }),
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ selectedDay }: { selectedDay: number | null }) =>
+        useCalendarMonthData({
+          subscriptions,
+          cycles: [{ id: "cycle-monthly", name: "Monthly" }],
+          currencies: [getCurrency({ is_main: true })],
+          members,
+          year: 2026,
+          month: 4,
+          selectedDay,
+        }),
+      { initialProps: { selectedDay: null as number | null } },
+    );
+
+    expect(Object.keys(result.current.memberExpiriesByDay)).toEqual(["12"]);
+    expect(result.current.memberExpiriesByDay[12].map((entry) => entry.member.id)).toEqual([
+      "m-1",
+      "m-2",
+    ]);
+    expect(result.current.memberExpiriesByDay[12][0].sub.id).toBe("sub-1");
+    expect(result.current.selectedMemberExpiries).toEqual([]);
+    expect(result.current.stats.count).toBe(1);
+
+    rerender({ selectedDay: 12 });
+    expect(result.current.selectedMemberExpiries).toHaveLength(2);
+
+    rerender({ selectedDay: 13 });
+    expect(result.current.selectedMemberExpiries).toEqual([]);
+  });
+
+  it("defaults to no member expiries", () => {
+    const { result } = renderHook(() =>
+      useCalendarMonthData({
+        subscriptions: [],
+        cycles: [],
+        currencies: [],
+        year: 2026,
+        month: 4,
+        selectedDay: null,
+      }),
+    );
+
+    expect(result.current.memberExpiriesByDay).toEqual({});
   });
 });

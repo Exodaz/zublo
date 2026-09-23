@@ -1,13 +1,21 @@
 import { useMemo } from "react";
 
-import { type DayEntry, getOccurrencesInMonth, toMain } from "@/components/calendar/types";
+import {
+  type DayEntry,
+  getOccurrencesInMonth,
+  type MemberExpiryEntry,
+  parseLocalDate,
+  toMain,
+} from "@/components/calendar/types";
 import { isExpense } from "@/lib/recordTypes";
-import type { Currency, Cycle, Subscription } from "@/types";
+import type { Currency, Cycle, Subscription, SubscriptionMember } from "@/types";
 
 interface UseCalendarMonthDataParams {
   subscriptions: Subscription[];
   cycles: Cycle[];
   currencies: Currency[];
+  /** Family-sharing members; their expiry dates are shown, never totalled. */
+  members?: SubscriptionMember[];
   year: number;
   month: number;
   selectedDay: number | null;
@@ -17,6 +25,7 @@ export function useCalendarMonthData({
   subscriptions,
   cycles,
   currencies,
+  members = [],
   year,
   month,
   selectedDay,
@@ -43,6 +52,21 @@ export function useCalendarMonthData({
 
     return entries;
   }, [subscriptions, cycles, year, month]);
+
+  const memberExpiriesByDay = useMemo<Record<number, MemberExpiryEntry[]>>(() => {
+    const subscriptionById = new Map(subscriptions.map((sub) => [sub.id, sub]));
+    const entries: Record<number, MemberExpiryEntry[]> = {};
+
+    for (const member of members) {
+      const date = parseLocalDate(member.expires_at);
+      const sub = subscriptionById.get(member.subscription);
+      if (!date || !sub) continue;
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1) continue;
+      (entries[date.getDate()] ??= []).push({ member, sub });
+    }
+
+    return entries;
+  }, [members, subscriptions, year, month]);
 
   const stats = useMemo(() => {
     const today = new Date();
@@ -102,6 +126,11 @@ export function useCalendarMonthData({
     [selectedDay, entriesByDay],
   );
 
+  const selectedMemberExpiries = useMemo(
+    () => (selectedDay ? (memberExpiriesByDay[selectedDay] ?? []) : []),
+    [selectedDay, memberExpiriesByDay],
+  );
+
   const selectedDayTotal = useMemo(
     () =>
       selectedEntries.reduce((sum, { sub }) => {
@@ -118,8 +147,10 @@ export function useCalendarMonthData({
     daysInMonth,
     entriesByDay,
     mainCurrency,
+    memberExpiriesByDay,
     selectedDayTotal,
     selectedEntries,
+    selectedMemberExpiries,
     stats,
   };
 }

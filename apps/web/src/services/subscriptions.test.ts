@@ -139,4 +139,18 @@ describe("subscriptionsService", () => {
       "prime.png",
     );
   });
+
+  it("falls back to the Brandfetch logo of the brand domain, then of the url", () => {
+    expect(
+      subscriptionsService.logoUrl({
+        id: "s",
+        brand_domain: "spotify.com",
+        url: "https://www.netflix.com",
+      } as Subscription),
+    ).toBe("/api/brand-logo?domain=spotify.com&size=128");
+    expect(
+      subscriptionsService.logoUrl({ id: "s", url: "https://www.Netflix.com/th" } as Subscription),
+    ).toBe("/api/brand-logo?domain=netflix.com&size=128");
+    expect(subscriptionsService.logoUrl({ id: "s", url: "not a url" } as Subscription)).toBeNull();
+  });
 });

@@ -42,6 +42,10 @@ vi.mock("@/lib/toast", () => ({
   },
 }));
 
+vi.mock("@/services/brandSearch", () => ({
+  brandSearchService: { search: () => Promise.resolve({ configured: false, brands: [] }) },
+}));
+
 vi.mock("@/services/subscriptions", () => ({
   subscriptionsService: {
     create: mocks.createSubscription,
@@ -402,7 +406,7 @@ describe("SubscriptionFormModal", () => {
     );
 
     fireEvent.change(screen.getByLabelText("currency-input"), { target: { value: "500" } });
-    fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "Bonus" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "Bonus" } }); // [0] is the service search
 
     // Expense → credit: forces the One-Time cycle and hides recurring options.
     fireEvent.click(screen.getByTestId("select-item-credit"));
@@ -607,7 +611,7 @@ describe("SubscriptionFormModal", () => {
       />,
     );
 
-    fireEvent.change(screen.getAllByRole("textbox")[0], { target: { value: "Bonus" } });
+    fireEvent.change(screen.getAllByRole("textbox")[1], { target: { value: "Bonus" } }); // [0] is the service search
     fireEvent.click(screen.getByTestId("select-item-credit"));
     fireEvent.click(screen.getByTestId("select-item-expense"));
 
@@ -2287,5 +2291,105 @@ describe("SubscriptionFormModal", () => {
     // The component renders correctly with the subscription name; the date
     // fields are processed through toDateOnly's slice(0,10) fallback (line 53).
     expect(screen.getByDisplayValue("Netflix")).toBeInTheDocument();
+  });
+
+  describe("service picker", () => {
+    const renderForm = (sub: Subscription | null) =>
+      render(
+        <SubscriptionFormModal
+          sub={sub}
+          userId="user-1"
+          currencies={[getCurrency()]}
+          categories={[getCategory()]}
+          paymentMethods={[getPaymentMethod()]}
+          household={[getHousehold()]}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+        />,
+      );
+
+    it("fills an empty name and url from the chosen service and saves its domain", async () => {
+      renderForm(null);
+
+      fireEvent.change(screen.getByLabelText("currency-input"), { target: { value: "419" } });
+      fireEvent.change(screen.getByLabelText("service"), { target: { value: "spot" } });
+      fireEvent.click(screen.getByRole("option", { name: /Spotify/ }));
+
+      expect(screen.getByDisplayValue("Spotify")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("https://www.spotify.com")).toBeInTheDocument();
+      expect(screen.getByText("brand_logo_preview")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() =>
+        expect(mocks.createSubscription).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: "Spotify",
+            url: "https://www.spotify.com",
+            brand_domain: "spotify.com",
+          }),
+        ),
+      );
+      expect(mocks.createSubscription.mock.calls[0][0]).not.toHaveProperty("logo");
+    });
+
+    it("keeps an existing name and url, and drops an uploaded logo so the brand logo shows", async () => {
+      renderForm(getSubscription({ logo: "old.png" }));
+
+      fireEvent.change(screen.getByLabelText("service"), { target: { value: "https://www.Canva.com/pro" } });
+      fireEvent.click(screen.getByRole("option", { name: "use_domain" }));
+
+      expect(screen.getByDisplayValue("Netflix")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("https://netflix.com")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() =>
+        expect(mocks.updateSubscription).toHaveBeenCalledWith(
+          "sub-1",
+          expect.objectContaining({ brand_domain: "canva.com", logo: null }),
+        ),
+      );
+    });
+
+    it("keeps the uploaded logo when the service is removed or left untouched", async () => {
+      renderForm(getSubscription({ logo: "old.png", brand_domain: "netflix.com" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(mocks.updateSubscription).toHaveBeenCalledTimes(1));
+      expect(mocks.updateSubscription.mock.calls[0][1]).toMatchObject({ brand_domain: "netflix.com" });
+      expect(mocks.updateSubscription.mock.calls[0][1]).not.toHaveProperty("logo");
+
+      fireEvent.click(screen.getByRole("button", { name: "clear_service" }));
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+      await waitFor(() => expect(mocks.updateSubscription).toHaveBeenCalledTimes(2));
+      expect(mocks.updateSubscription.mock.calls[1][1]).toMatchObject({ brand_domain: "" });
+      expect(mocks.updateSubscription.mock.calls[1][1]).not.toHaveProperty("logo");
+    });
+  });
+
+  it("saves the payment account trimmed, prefilled when editing", async () => {
+    render(
+      <SubscriptionFormModal
+        sub={getSubscription({ payment_account: "old@icloud.com" })}
+        userId="user-1"
+        currencies={[getCurrency()]}
+        categories={[getCategory()]}
+        paymentMethods={[getPaymentMethod()]}
+        household={[getHousehold()]}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByLabelText("payment_account");
+    expect(input).toHaveValue("old@icloud.com");
+    fireEvent.change(input, { target: { value: "  family@icloud.com " } });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() =>
+      expect(mocks.updateSubscription).toHaveBeenCalledWith(
+        "sub-1",
+        expect.objectContaining({ payment_account: "family@icloud.com" }),
+      ),
+    );
   });
 });

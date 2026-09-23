@@ -487,4 +487,56 @@ describe("CalendarMonthCard", () => {
       screen.getByText((_, element) => element?.textContent === "+500.00 $"),
     ).toBeInTheDocument();
   });
+
+  it("shows member expiries after payments, sharing the three visible slots", () => {
+    const member = (id: string, name: string) => ({
+      member: { id, subscription: "sub-9", user: "user-1", name },
+      sub: getSubscription({ id: "sub-9", name: "Spotify Family" }),
+    });
+    const payment = (id: string) => ({
+      sub: getSubscription({ id, name: `Pay ${id}` }),
+      date: new Date(2026, 3, 10),
+    });
+
+    render(
+      <CalendarMonthCard
+        month={4}
+        year={2026}
+        now={new Date(2026, 3, 1)}
+        daysInMonth={30}
+        isCurrentMonth={true}
+        loading={false}
+        statsCount={2}
+        selectedDay={null}
+        allCells={[
+          { day: 10, type: "current" },
+          { day: 11, type: "current" },
+          { day: 1, type: "next" },
+        ]}
+        entriesByDay={{ 10: [payment("p-1"), payment("p-2")] }}
+        memberExpiriesByDay={{
+          1: [member("m-other", "Ghost")],
+          10: [member("m-1", "Alice"), member("m-2", "Bob")],
+          11: [member("m-3", "Carol")],
+        }}
+        mainCurrency={getCurrency()}
+        currencyById={new Map([["cur-1", getCurrency()]])}
+        paymentTracking={false}
+        paymentRecords={[]}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        onGoToday={vi.fn()}
+        onSelectDay={vi.fn()}
+      />,
+    );
+
+    // Day 10: two payments + Alice fill the slots; Bob overflows.
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    expect(screen.getByText("+1 more")).toBeInTheDocument();
+    // A day with only an expiry still shows it, without a payment total.
+    expect(screen.getByTitle("Carol · Spotify Family")).toBeInTheDocument();
+    // Other-month cells never show expiries.
+    expect(screen.queryByText("Ghost")).not.toBeInTheDocument();
+  });
 });

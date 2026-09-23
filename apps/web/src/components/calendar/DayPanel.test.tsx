@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import type { Currency, PaymentRecord, Subscription } from "@/types";
+import type { Currency, PaymentRecord, Subscription, SubscriptionMember } from "@/types";
 
 const mocks = vi.hoisted(() => ({
   getColorForSub: vi.fn(() => "bg-blue-500/15"),
@@ -9,6 +9,13 @@ const mocks = vi.hoisted(() => ({
   toDateStr: vi.fn((date: Date) => date.toISOString().slice(0, 10)),
   toMain: vi.fn((price: number) => price * 2),
   formatPrice: vi.fn((price: number, symbol: string) => `${price} ${symbol}`),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key}:${Object.values(options).join(",")}` : key,
+  }),
 }));
 
 vi.mock("@/components/calendar/types", async (importOriginal) => {
@@ -487,5 +494,77 @@ describe("DayPanel", () => {
     expect(screen.getByText("credit_income")).toBeInTheDocument();
     // Income reads as "+500 $", never as an amount owed.
     expect(screen.getByText(/\+/)).toBeInTheDocument();
+  });
+
+  it("lists member expiries for the day and forwards their selection", () => {
+    const member = (overrides: Partial<SubscriptionMember>): SubscriptionMember => ({
+      id: "m-1",
+      subscription: "sub-1",
+      user: "user-1",
+      name: "Alice",
+      ...overrides,
+    });
+    const sub = getSubscription();
+    const alice = { member: member({ email: "alice@example.com", expires_at: "2026-03-01" }), sub };
+    const bob = { member: member({ id: "m-2", name: "Bob", expires_at: "2026-06-01" }), sub };
+    const onSelectMemberExpiry = vi.fn();
+
+    render(
+      <DayPanel
+        day={10}
+        month={3}
+        year={2026}
+        entries={[]}
+        total={0}
+        mainCurrency={getCurrency()}
+        currencies={[getCurrency()]}
+        now={new Date(Date.UTC(2026, 2, 10))}
+        t={(key) => key}
+        paymentTracking={false}
+        paymentRecords={[]}
+        onSelectEntry={vi.fn()}
+        memberExpiries={[alice, bob]}
+        onSelectMemberExpiry={onSelectMemberExpiry}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("member_expiries")).toBeInTheDocument();
+    expect(screen.getByText(`${sub.name} · alice@example.com`)).toBeInTheDocument();
+    expect(screen.getByText(sub.name)).toBeInTheDocument();
+    expect(screen.getByText("member_expired")).toBeInTheDocument();
+    expect(screen.getByText("member_active")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Bob"));
+    expect(onSelectMemberExpiry).toHaveBeenCalledWith(bob);
+  });
+
+  it("ignores member expiry clicks without a handler", () => {
+    render(
+      <DayPanel
+        day={10}
+        month={3}
+        year={2026}
+        entries={[]}
+        total={0}
+        mainCurrency={getCurrency()}
+        currencies={[getCurrency()]}
+        now={new Date(Date.UTC(2026, 2, 10))}
+        t={(key) => key}
+        paymentTracking={false}
+        paymentRecords={[]}
+        onSelectEntry={vi.fn()}
+        memberExpiries={[
+          {
+            member: { id: "m-1", subscription: "sub-1", user: "user-1", name: "Alice" },
+            sub: getSubscription(),
+          },
+        ]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Alice"));
+    expect(screen.getByText("member_no_expiry")).toBeInTheDocument();
   });
 });

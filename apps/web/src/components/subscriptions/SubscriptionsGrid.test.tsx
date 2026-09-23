@@ -164,4 +164,13 @@ describe("SubscriptionsGrid", () => {
 
     expect(screen.getAllByLabelText("members_count")).toHaveLength(1);
   });
+
+  it("opens a subscription's details when its card is clicked", () => {
+    const onOpen = vi.fn();
+    const sub = getSub();
+    render(<SubscriptionsGrid isLoading={false} subscriptions={[sub]} onOpen={onOpen} {...baseHandlers} />);
+
+    fireEvent.click(screen.getByText("Netflix"));
+    expect(onOpen).toHaveBeenCalledWith(sub);
+  });
 });

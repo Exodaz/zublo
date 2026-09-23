@@ -9,9 +9,10 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { SubscriptionLogo } from "@/components/subscriptions/SubscriptionLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,7 +29,6 @@ import {
   toMonthly,
 } from "@/lib/utils";
 import { paymentMethodsService } from "@/services/paymentMethods";
-import { subscriptionsService } from "@/services/subscriptions";
 import type { Currency, PaymentMethod, Subscription, SubscriptionMember } from "@/types";
 
 // ── Payment method icon helpers ───────────────────────────────────────────────
@@ -267,6 +267,7 @@ export function SubscriptionCard({
   onHistory,
   onMembers,
   onDelete,
+  onOpen,
   members = [],
   layout = "grid",
 }: {
@@ -282,6 +283,8 @@ export function SubscriptionCard({
   onHistory: () => void;
   onMembers: () => void;
   onDelete: () => void;
+  /** Opens the detail summary; clicks on the card's own buttons and links don't. */
+  onOpen?: () => void;
   members?: SubscriptionMember[];
   layout?: "grid" | "list";
 }) {
@@ -303,27 +306,38 @@ export function SubscriptionCard({
   const days = daysUntil(sub.next_payment);
   const progress = showProgress ? subscriptionProgress(sub.start_date, sub.next_payment) : 0;
 
+  const openProps = onOpen
+    ? {
+        role: "button",
+        tabIndex: 0,
+        "aria-label": `${t("open_details")}: ${sub.name}`,
+        onClick: (event: MouseEvent<HTMLDivElement>) => {
+          if ((event.target as HTMLElement).closest("button, a")) return;
+          onOpen();
+        },
+        onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen();
+          }
+        },
+      }
+    : {};
+
   if (layout === "list") {
     return (
       <div
+        {...openProps}
         className={cn(
           "group flex flex-col gap-3 rounded-xl border bg-card/60 p-3 backdrop-blur-sm transition-colors hover:bg-card sm:flex-row sm:items-center",
+          onOpen && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           sub.inactive && "opacity-60 grayscale-[0.3]",
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background font-bold shadow-sm">
-            {sub.logo ? (
-              <img
-                src={subscriptionsService.logoUrl(sub) ?? ""}
-                alt={sub.name}
-                className="h-full w-full rounded-xl object-cover p-1"
-              />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
-                {sub.name[0]?.toUpperCase()}
-              </span>
-            )}
+            <SubscriptionLogo sub={sub} imgClassName="rounded-xl object-contain p-1" />
           </div>
 
           <div className="min-w-0">
@@ -375,6 +389,11 @@ export function SubscriptionCard({
 
           <div className="hidden min-w-[7rem] items-center gap-2 text-xs text-muted-foreground lg:flex">
             {paymentMethod ? <PaymentMethodIcon method={paymentMethod} /> : null}
+            {sub.payment_account ? (
+              <span className="truncate" title={`${t("payment_account")}: ${sub.payment_account}`}>
+                {sub.payment_account}
+              </span>
+            ) : null}
             {payer ? (
               <span className="truncate font-medium text-foreground/80">{payer.name}</span>
             ) : null}
@@ -398,8 +417,10 @@ export function SubscriptionCard({
 
   return (
     <div
+      {...openProps}
       className={cn(
         "group relative rounded-2xl border bg-card/60 backdrop-blur-sm p-5 transition-all duration-300 hover:shadow-lg hover:bg-card hover:-translate-y-1 flex flex-col justify-between overflow-hidden",
+        onOpen && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         sub.inactive && "opacity-60 grayscale-[0.3]",
       )}
     >
@@ -408,17 +429,7 @@ export function SubscriptionCard({
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div className="flex min-w-[10rem] flex-1 items-center gap-3">
           <div className="h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-background shadow-sm border flex items-center justify-center text-xl font-bold">
-            {sub.logo ? (
-              <img
-                src={subscriptionsService.logoUrl(sub) ?? ""}
-                alt={sub.name}
-                className="h-full w-full object-cover p-1 rounded-2xl"
-              />
-            ) : (
-              <span className="bg-primary/10 text-primary w-full h-full flex items-center justify-center">
-                {sub.name[0]?.toUpperCase()}
-              </span>
-            )}
+            <SubscriptionLogo sub={sub} imgClassName="rounded-2xl object-contain p-1" />
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-lg leading-tight line-clamp-1 group-hover:text-primary transition-colors">
@@ -509,8 +520,16 @@ export function SubscriptionCard({
       </div>
 
       <div className="mt-5 pt-4 border-t flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           {paymentMethod && <PaymentMethodIcon method={paymentMethod} />}
+          {sub.payment_account && (
+            <span
+              className="min-w-0 truncate"
+              title={`${t("payment_account")}: ${sub.payment_account}`}
+            >
+              {sub.payment_account}
+            </span>
+          )}
           {payer && (
             <span className="font-medium text-foreground/80">
               {t("pays")} {payer.name}

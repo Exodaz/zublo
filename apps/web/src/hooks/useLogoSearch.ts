@@ -362,6 +362,13 @@ export function useLogoSearch() {
     setShowLogoResults(false);
   };
 
+  /** Drops a searched or uploaded logo that has not been saved yet. */
+  const resetLogo = () => {
+    setLogoFile(null);
+    setLogoUrl("");
+    setLogoPreview(null);
+  };
+
   return {
     logoFile,
     logoUrl,
@@ -375,5 +382,6 @@ export function useLogoSearch() {
     logoSearchRef,
     handleSelectLogo,
     handleFileChange,
+    resetLogo,
   };
 }

@@ -58,6 +58,7 @@ interface SubscriptionsGridProps {
   onHistory: (subscription: Subscription) => void;
   onMembers: (subscription: Subscription) => void;
   onDelete: (id: string) => void;
+  onOpen?: (subscription: Subscription) => void;
   /** Family-sharing members keyed by subscription id. */
   membersBySubscription?: Record<string, SubscriptionMember[]>;
 }
@@ -76,6 +77,7 @@ export function SubscriptionsGrid({
   onHistory,
   onMembers,
   onDelete,
+  onOpen,
   membersBySubscription = {},
 }: SubscriptionsGridProps) {
   if (isLoading) {
@@ -107,6 +109,7 @@ export function SubscriptionsGrid({
           onHistory={() => onHistory(subscription)}
           onMembers={() => onMembers(subscription)}
           onDelete={() => onDelete(subscription.id)}
+          onOpen={onOpen ? () => onOpen(subscription) : undefined}
           members={membersBySubscription[subscription.id]}
         />
       ))}

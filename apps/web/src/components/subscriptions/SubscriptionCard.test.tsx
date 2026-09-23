@@ -445,7 +445,7 @@ describe("SubscriptionCard", () => {
     });
   });
 
-  it("uses empty string src when logoUrl returns null", () => {
+  it("falls back to the initial when there is no logo URL", () => {
     mocks.subscriptionLogoUrl.mockReturnValue(null);
     render(
       <SubscriptionCard
@@ -458,10 +458,33 @@ describe("SubscriptionCard", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByAltText("Netflix")).toHaveAttribute("src", "");
+    expect(screen.queryByAltText("Netflix")).not.toBeInTheDocument();
+    expect(screen.getByText("N")).toBeInTheDocument();
+  });
+
+  it("falls back to the initial when the logo (e.g. a Brandfetch one) fails to load", () => {
+    mocks.subscriptionLogoUrl.mockReturnValue("/api/brand-logo?domain=netflix.com&size=128");
+    render(
+      <SubscriptionCard
+        sub={getSubscription({ logo: undefined, brand_domain: "netflix.com" })}
+        onEdit={vi.fn()}
+        onClone={vi.fn()}
+        onRenew={vi.fn()}
+        onHistory={vi.fn()}
+        onMembers={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    const img = screen.getByAltText("Netflix");
+    expect(img).toHaveAttribute("src", "/api/brand-logo?domain=netflix.com&size=128");
+
+    fireEvent.error(img);
+    expect(screen.queryByAltText("Netflix")).not.toBeInTheDocument();
+    expect(screen.getByText("N")).toBeInTheDocument();
   });
 
   it("renders fallback initials and inactive state when data is limited", () => {
+    mocks.subscriptionLogoUrl.mockReturnValue(null);
     render(
       <SubscriptionCard
         sub={getSubscription({
@@ -584,7 +607,7 @@ describe("SubscriptionCard", () => {
       expect(screen.getByText("one_time")).toBeInTheDocument();
       expect(screen.queryByText("received_on")).not.toBeInTheDocument();
 
-      // Active credit: shows when it is received; a null logo URL falls back to "".
+      // Active credit: shows when it is received; with a logo URL it shows the image.
       rerender(
         <SubscriptionCard
           sub={getSubscription({
@@ -603,7 +626,7 @@ describe("SubscriptionCard", () => {
       );
 
       expect(screen.getByText("received_on")).toBeInTheDocument();
-      expect(screen.getByAltText("Bonus")).not.toHaveAttribute("src", expect.stringMatching(/./));
+      expect(screen.getByText("B")).toBeInTheDocument();
     });
   });
 
@@ -680,6 +703,66 @@ describe("SubscriptionCard", () => {
       expect(chip).toHaveClass("text-amber-700");
       fireEvent.click(chip);
       expect(onMembers).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("shows the payment account in both layouts", () => {
+    const handlers = {
+      onEdit: vi.fn(),
+      onClone: vi.fn(),
+      onRenew: vi.fn(),
+      onHistory: vi.fn(),
+      onMembers: vi.fn(),
+      onDelete: vi.fn(),
+    };
+    const sub = getSubscription({ payment_account: "family@icloud.com" });
+    const { rerender } = render(<SubscriptionCard sub={sub} {...handlers} />);
+    expect(screen.getByTitle("payment_account: family@icloud.com")).toHaveTextContent(
+      "family@icloud.com",
+    );
+
+    rerender(<SubscriptionCard sub={sub} layout="list" {...handlers} />);
+    expect(screen.getByTitle("payment_account: family@icloud.com")).toBeInTheDocument();
+
+    rerender(<SubscriptionCard sub={getSubscription()} layout="list" {...handlers} />);
+    expect(screen.queryByTitle(/payment_account/)).not.toBeInTheDocument();
+  });
+
+  describe("opening the detail summary", () => {
+    const handlers = () => ({
+      onEdit: vi.fn(),
+      onClone: vi.fn(),
+      onRenew: vi.fn(),
+      onHistory: vi.fn(),
+      onMembers: vi.fn(),
+      onDelete: vi.fn(),
+    });
+
+    it.each(["grid", "list"] as const)("opens from a click or key on the %s card, not from its buttons", (layout) => {
+      const onOpen = vi.fn();
+      const actions = handlers();
+      render(<SubscriptionCard sub={getSubscription()} layout={layout} onOpen={onOpen} {...actions} />);
+      const card = screen.getByRole("button", { name: "open_details: Netflix" });
+
+      fireEvent.click(screen.getByText("Netflix"));
+      expect(onOpen).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByTitle("edit"));
+      expect(actions.onEdit).toHaveBeenCalledTimes(1);
+      expect(onOpen).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(card, { key: "Enter" });
+      fireEvent.keyDown(card, { key: " " });
+      expect(onOpen).toHaveBeenCalledTimes(3);
+
+      fireEvent.keyDown(card, { key: "a" });
+      fireEvent.keyDown(screen.getByTitle("edit"), { key: "Enter" });
+      expect(onOpen).toHaveBeenCalledTimes(3);
+    });
+
+    it("is not clickable without an onOpen handler", () => {
+      render(<SubscriptionCard sub={getSubscription()} {...handlers()} />);
+      expect(screen.queryByRole("button", { name: /open_details/ })).not.toBeInTheDocument();
     });
   });
 });

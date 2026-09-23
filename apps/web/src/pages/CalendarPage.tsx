@@ -16,6 +16,7 @@ import {
 } from "@/components/calendar/types";
 import { useCalendarMonthData } from "@/components/calendar/useCalendarMonthData";
 import { SubscriptionFormModal } from "@/components/SubscriptionFormModal";
+import { SubscriptionMembersDialog } from "@/components/subscriptions/SubscriptionMembersDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import pb from "@/lib/pb";
 import { queryKeys } from "@/lib/queryKeys";
@@ -26,6 +27,7 @@ import { cyclesService } from "@/services/cycles";
 import { householdService } from "@/services/household";
 import { paymentMethodsService } from "@/services/paymentMethods";
 import { paymentRecordsService } from "@/services/paymentRecords";
+import { subscriptionMembersService } from "@/services/subscriptionMembers";
 import { subscriptionsService } from "@/services/subscriptions";
 import type { Subscription } from "@/types";
 
@@ -45,6 +47,7 @@ export function CalendarPage() {
   );
   const [editOpen, setEditOpen] = useState(false);
   const [markAsPaidEntry, setMarkAsPaidEntry] = useState<DayEntry | null>(null);
+  const [membersSubscription, setMembersSubscription] = useState<Subscription | null>(null);
 
   const paymentTracking = !!user?.payment_tracking;
 
@@ -83,6 +86,12 @@ export function CalendarPage() {
     enabled: !!userId,
   });
 
+  const { data: members = [] } = useQuery({
+    queryKey: queryKeys.subscriptions.members(userId),
+    queryFn: () => subscriptionMembersService.list(userId),
+    enabled: !!userId,
+  });
+
   const { data: paymentRecords = [] } = useQuery({
     queryKey: queryKeys.paymentRecords.forMonth(userId, year, month),
     queryFn: () => {
@@ -106,13 +115,16 @@ export function CalendarPage() {
     daysInMonth,
     entriesByDay,
     mainCurrency,
+    memberExpiriesByDay,
     selectedDayTotal,
     selectedEntries,
+    selectedMemberExpiries,
     stats,
   } = useCalendarMonthData({
     subscriptions,
     cycles,
     currencies,
+    members,
     year,
     month,
     selectedDay,
@@ -205,6 +217,7 @@ export function CalendarPage() {
         selectedDay={selectedDay}
         allCells={allCells}
         entriesByDay={entriesByDay}
+        memberExpiriesByDay={memberExpiriesByDay}
         mainCurrency={mainCurrency}
         currencyById={currencyById}
         paymentTracking={paymentTracking}
@@ -229,6 +242,8 @@ export function CalendarPage() {
           paymentTracking={paymentTracking}
           paymentRecords={paymentRecords}
           onSelectEntry={(entry) => setDetailEntry(entry)}
+          memberExpiries={selectedMemberExpiries}
+          onSelectMemberExpiry={(entry) => setMembersSubscription(entry.sub)}
           onClose={() => setSelectedDay(null)}
         />
       ) : null}
@@ -281,6 +296,15 @@ export function CalendarPage() {
             });
           }}
           t={t}
+        />
+      ) : null}
+
+      {membersSubscription ? (
+        <SubscriptionMembersDialog
+          sub={membersSubscription}
+          userId={userId}
+          members={members.filter((member) => member.subscription === membersSubscription.id)}
+          onClose={() => setMembersSubscription(null)}
         />
       ) : null}
 

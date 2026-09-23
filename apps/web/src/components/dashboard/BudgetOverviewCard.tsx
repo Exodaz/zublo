@@ -1,10 +1,10 @@
 import { DollarSign } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { SubscriptionLogo } from "@/components/subscriptions/SubscriptionLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { subscriptionsService } from "@/services/subscriptions";
 import type { Subscription } from "@/types";
 
 interface MostExpensiveSubscription {
@@ -117,17 +117,10 @@ export function BudgetOverviewCard({
         {mostExpensive ? (
           <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background text-sm font-bold shadow-sm">
-              {mostExpensive.logo ? (
-                <img
-                  src={subscriptionsService.logoUrl(mostExpensive.record) ?? ""}
-                  alt={mostExpensive.name}
-                  className="h-full w-full rounded-xl object-cover p-0.5"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
-                  {mostExpensive.name[0]?.toUpperCase()}
-                </span>
-              )}
+              <SubscriptionLogo
+                sub={mostExpensive.record}
+                imgClassName="rounded-xl object-contain p-0.5"
+              />
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

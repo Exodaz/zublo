@@ -20,6 +20,8 @@ interface Props {
   handleFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
   logoFile: File | null;
   logoUrl: string;
+  /** Brandfetch logo of the chosen service, previewed until a logo is picked here. */
+  brandLogoSrc?: string | null;
 }
 
 export function SubscriptionLogoSection({
@@ -35,6 +37,7 @@ export function SubscriptionLogoSection({
   handleFileChange,
   logoFile,
   logoUrl,
+  brandLogoSrc,
 }: Props) {
   const { t } = useTranslation();
 
@@ -124,6 +127,15 @@ export function SubscriptionLogoSection({
             alt=""
             className="h-full w-full object-contain"
           />
+        </div>
+      )}
+
+      {!logoPreview && !logoUrl && brandLogoSrc && (
+        <div className="flex items-center gap-3">
+          <div className="h-14 w-14 overflow-hidden rounded border bg-muted p-1.5">
+            <img src={brandLogoSrc} alt="" className="h-full w-full object-contain" />
+          </div>
+          <p className="text-xs text-muted-foreground">{t("brand_logo_preview")}</p>
         </div>
       )}
 

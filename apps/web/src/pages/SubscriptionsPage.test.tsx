@@ -237,6 +237,7 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onHistory,
     onMembers,
     onDelete,
+    onOpen,
     membersBySubscription,
   }: {
     subscriptions: Array<{ id: string; name: string }>;
@@ -247,6 +248,7 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onHistory: (subscription: { id: string; name: string }) => void;
     onMembers: (subscription: { id: string; name: string }) => void;
     onDelete: (id: string) => void;
+    onOpen: (subscription: { id: string; name: string }) => void;
     membersBySubscription: Record<string, unknown[]>;
   }) => (
     <div>
@@ -275,6 +277,12 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
       </button>
       <button type="button" onClick={() => onMembers({ id: "sub-none", name: "Empty" })}>
         members-empty-subscription
+      </button>
+      <button type="button" onClick={() => onOpen(subscriptions[0])}>
+        open-subscription
+      </button>
+      <button type="button" onClick={() => onOpen({ id: "sub-none", name: "Empty" })}>
+        open-empty-subscription
       </button>
       <button type="button" onClick={() => onDelete(subscriptions[0].id)}>
         delete-subscription
@@ -317,6 +325,42 @@ vi.mock("@/components/subscriptions/SubscriptionHistoryDialog", () => ({
       <div>history:{sub.name}</div>
       <button type="button" onClick={onClose}>
         close-history
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/subscriptions/SubscriptionDetailDialog", () => ({
+  SubscriptionDetailDialog: ({
+    sub,
+    members,
+    onClose,
+    onEdit,
+    onMembers,
+    onHistory,
+  }: {
+    sub: { name: string };
+    members: unknown[];
+    onClose: () => void;
+    onEdit: () => void;
+    onMembers: () => void;
+    onHistory: () => void;
+  }) => (
+    <div>
+      <div>
+        detail:{sub.name}:{members.length}
+      </div>
+      <button type="button" onClick={onEdit}>
+        detail-edit
+      </button>
+      <button type="button" onClick={onMembers}>
+        detail-members
+      </button>
+      <button type="button" onClick={onHistory}>
+        detail-history
+      </button>
+      <button type="button" onClick={onClose}>
+        close-detail
       </button>
     </div>
   ),
@@ -642,6 +686,38 @@ describe("SubscriptionsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "members-empty-subscription" }));
     expect(screen.getByText("members:Empty:0")).toBeInTheDocument();
+  });
+
+  it("opens the detail summary and hands off to edit, members and history", async () => {
+    mocks.listMembers.mockResolvedValue([{ id: "m-1", subscription: "sub-1", name: "Alice" }]);
+    const { Wrapper } = createQueryClientWrapper();
+    render(<SubscriptionsPage />, { wrapper: Wrapper });
+    await waitFor(() => screen.getByText("grouped:sub-1=1"));
+
+    fireEvent.click(screen.getByRole("button", { name: "open-subscription" }));
+    expect(screen.getByText("detail:Netflix:1")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "close-detail" }));
+    expect(screen.queryByText(/^detail:/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "open-empty-subscription" }));
+    expect(screen.getByText("detail:Empty:0")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "close-detail" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "open-subscription" }));
+    fireEvent.click(screen.getByRole("button", { name: "detail-members" }));
+    expect(screen.queryByText(/^detail:/)).not.toBeInTheDocument();
+    expect(screen.getByText("members:Netflix:1")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "close-members" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "open-subscription" }));
+    fireEvent.click(screen.getByRole("button", { name: "detail-history" }));
+    expect(screen.getByText("history:Netflix")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "close-history" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "open-subscription" }));
+    fireEvent.click(screen.getByRole("button", { name: "detail-edit" }));
+    expect(screen.queryByText(/^detail:/)).not.toBeInTheDocument();
+    expect(screen.getByText("form:Netflix")).toBeInTheDocument();
   });
 
   it("renders with empty userId when user is null (covers user?.id ?? '' fallback)", () => {

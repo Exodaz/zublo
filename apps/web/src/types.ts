@@ -112,10 +112,14 @@ export interface Subscription {
   auto_renew: boolean;
   start_date: string;
   payment_method?: string;
+  /** Account the subscription is billed to, e.g. an Apple ID. */
+  payment_account?: string;
   payer?: string;
   category?: string;
   notes?: string;
   url?: string;
+  /** Service domain (e.g. netflix.com) whose Brandfetch logo is shown when no logo is uploaded. */
+  brand_domain?: string;
   notify: boolean;
   notify_days_before: number;
   inactive: boolean;

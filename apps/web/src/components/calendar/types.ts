@@ -1,12 +1,18 @@
 import { subscriptionsService } from "@/services/subscriptions";
 import { isCredit } from "@/lib/recordTypes";
-import type { Currency, Cycle, PaymentRecord, Subscription } from "@/types";
+import type { Currency, Cycle, PaymentRecord, Subscription, SubscriptionMember } from "@/types";
 
 // ─── Sub-types ───────────────────────────────────────────────────────────────
 
 export interface DayEntry {
   sub: Subscription;
   date: Date;
+}
+
+/** A family-sharing member whose access ends on a calendar day. */
+export interface MemberExpiryEntry {
+  member: SubscriptionMember;
+  sub: Subscription;
 }
 
 // ─── Category colors ─────────────────────────────────────────────────────────

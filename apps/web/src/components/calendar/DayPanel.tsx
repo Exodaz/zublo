@@ -1,9 +1,11 @@
-import { CheckCircle2, CircleDot, Info, X } from "lucide-react";
+import { CheckCircle2, CircleDot, Info, Users, X } from "lucide-react";
 
+import { MemberExpiryBadge } from "@/components/subscriptions/SubscriptionMembersDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
+import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { isCredit } from "@/lib/recordTypes";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -14,6 +16,7 @@ import {
   getColorForSub,
   getLogoUrl,
   getPaymentRecord,
+  type MemberExpiryEntry,
   toDateStr,
   toMain,
 } from "./types";
@@ -31,6 +34,8 @@ interface DayPanelProps {
   paymentTracking: boolean;
   paymentRecords: PaymentRecord[];
   onSelectEntry: (entry: DayEntry) => void;
+  memberExpiries?: MemberExpiryEntry[];
+  onSelectMemberExpiry?: (entry: MemberExpiryEntry) => void;
   onClose: () => void;
 }
 
@@ -47,6 +52,8 @@ export function DayPanel({
   paymentTracking,
   paymentRecords,
   onSelectEntry,
+  memberExpiries = [],
+  onSelectMemberExpiry,
   onClose,
 }: DayPanelProps) {
   const dateLabel = new Date(year, month - 1, day).toLocaleDateString("en-US", {
@@ -229,6 +236,42 @@ export function DayPanel({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Family-sharing members whose access ends on this day */}
+        {memberExpiries.length > 0 && (
+          <div className="border-t">
+            <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("member_expiries")}
+            </p>
+            <div className="divide-y">
+              {memberExpiries.map((entry) => {
+                const { member, sub } = entry;
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => onSelectMemberExpiry?.(entry)}
+                    className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-accent/40"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-dashed border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400">
+                      <Users className="h-5 w-5" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{member.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {sub.name}
+                        {member.email ? ` · ${member.email}` : ""}
+                      </p>
+                    </div>
+                    <MemberExpiryBadge
+                      expiry={memberExpiryStatus(member.expires_at, toDateStr(now))}
+                    />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
