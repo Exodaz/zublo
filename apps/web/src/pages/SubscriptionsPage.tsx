@@ -19,6 +19,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilteredSubscriptions } from "@/hooks/useFilteredSubscriptions";
 import { queryKeys } from "@/lib/queryKeys";
+import {
+  MEMBERS_SHEET,
+  readImportFile,
+  SUBSCRIPTIONS_SHEET,
+  toSpreadsheetRows,
+} from "@/lib/subscriptionTransfer";
 import { toast } from "@/lib/toast";
 import { categoriesService } from "@/services/categories";
 import { currenciesService } from "@/services/currencies";
@@ -143,7 +149,7 @@ export function SubscriptionsPage() {
       const data = await subscriptionsService.export();
 
       if (format === "json") {
-        const blob = new Blob([JSON.stringify(data.subscriptions, null, 2)], {
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
           type: "application/json",
         });
         const url = URL.createObjectURL(blob);
@@ -156,9 +162,14 @@ export function SubscriptionsPage() {
       }
 
       const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(data.subscriptions);
+      const rows = toSpreadsheetRows(data.subscriptions);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Subscriptions");
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.json_to_sheet(rows.subscriptions),
+        SUBSCRIPTIONS_SHEET,
+      );
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows.members), MEMBERS_SHEET);
       XLSX.writeFile(workbook, "zublo-subscriptions.xlsx");
     } catch {
       toast.error(t("unknown_error"));
@@ -176,14 +187,7 @@ export function SubscriptionsPage() {
     setIsImporting(true);
 
     try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-
-      const importedSubscriptions: unknown[] | null = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed.subscriptions)
-          ? parsed.subscriptions
-          : null;
+      const importedSubscriptions = await readImportFile(file);
 
       if (!importedSubscriptions) {
         toast.error(t("import_invalid_format"));
@@ -194,17 +198,16 @@ export function SubscriptionsPage() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.subscriptions.all(userId),
       });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscriptions.members(userId),
+      });
 
-      if (result.skipped > 0) {
-        toast.success(
-          t("import_partial", {
-            imported: result.imported,
-            skipped: result.skipped,
-          }),
-        );
-      } else {
-        toast.success(t("import_success", { count: result.imported }));
-      }
+      const summary =
+        result.skipped > 0
+          ? t("import_partial", { imported: result.imported, skipped: result.skipped })
+          : t("import_success", { count: result.imported });
+      const members = result.members_imported ?? 0;
+      toast.success(members > 0 ? `${summary} · ${t("import_members", { count: members })}` : summary);
     } catch {
       toast.error(t("import_error"));
     } finally {

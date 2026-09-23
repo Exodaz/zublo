@@ -563,10 +563,30 @@ describe("SubscriptionsPage", () => {
     render(<SubscriptionsPage />, { wrapper: Wrapper });
     await waitFor(() => screen.getByText("grid:1"));
 
+    mocks.exportSubscriptions.mockResolvedValueOnce({
+      format: "zublo",
+      version: 2,
+      subscriptions: [
+        { id: "sub-1", name: "Netflix", members: [{ name: "Alice", amount: 400 }] },
+        { id: "sub-2", name: "Spotify" },
+      ],
+    });
+    mocks.xlsxJsonToSheet.mockImplementation((rows: unknown[]) => ({ rows }));
     fireEvent.click(screen.getByRole("button", { name: "export-xlsx" }));
     await waitFor(() => {
       expect(mocks.xlsxWriteFile).toHaveBeenCalled();
     });
+    // One sheet of subscriptions (members lifted out) and one sheet of members.
+    expect(mocks.xlsxBookAppendSheet).toHaveBeenCalledWith(
+      undefined,
+      { rows: [{ id: "sub-1", name: "Netflix" }, { id: "sub-2", name: "Spotify" }] },
+      "Subscriptions",
+    );
+    expect(mocks.xlsxBookAppendSheet).toHaveBeenCalledWith(
+      undefined,
+      { rows: [{ subscription_id: "sub-1", subscription: "Netflix", name: "Alice", amount: 400 }] },
+      "Members",
+    );
 
     mocks.exportSubscriptions.mockRejectedValueOnce(new Error("fail output"));
     fireEvent.click(screen.getByRole("button", { name: "export-xlsx" }));
@@ -601,6 +621,15 @@ describe("SubscriptionsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "import-obj-subs" }));
     await waitFor(() => {
       expect(mocks.toastSuccess).toHaveBeenCalledWith('import_partial:{"imported":1,"skipped":1}');
+    });
+
+    // Imported members are mentioned alongside the subscription count.
+    mocks.importSubscriptions.mockResolvedValueOnce({ imported: 1, skipped: 0, members_imported: 5 });
+    fireEvent.click(screen.getByRole("button", { name: "import-obj-subs" }));
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        'import_success:{"count":1} · import_members:{"count":5}',
+      );
     });
   });
 

@@ -41,11 +41,19 @@ export const subscriptionsService = {
   renew: (id: string) =>
     api.post<{ id: string }>("/api/subscription/renew", { id }),
 
+  /** Everything needed to restore subscriptions, members included (format version 2). */
   export: () =>
-    api.get<{ subscriptions: unknown[] }>("/api/subscriptions/export"),
+    api.get<{ format?: string; version?: number; exported_at?: string; subscriptions: unknown[] }>(
+      "/api/subscriptions/export",
+    ),
 
   import: (subscriptions: unknown[]) =>
-    api.post<{ imported: number; skipped: number; errors: { index: number; name?: string; reason?: string; warning?: string }[] }>(
+    api.post<{
+      imported: number;
+      skipped: number;
+      members_imported?: number;
+      errors: { index: number; name?: string; reason?: string; warning?: string }[];
+    }>(
       "/api/subscriptions/import",
       { subscriptions }
     ),

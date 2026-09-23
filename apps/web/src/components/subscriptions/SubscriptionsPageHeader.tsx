@@ -40,7 +40,7 @@ export function SubscriptionsPageHeader({
         <input
           ref={importInputRef}
           type="file"
-          accept=".json"
+          accept=".json,.xlsx,.xls"
           className="hidden"
           onChange={onImportChange}
         />

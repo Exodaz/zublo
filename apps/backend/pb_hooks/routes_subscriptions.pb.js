@@ -9,6 +9,7 @@
 routerAdd("POST", "/api/subscriptions/import", (e) => {
   const dateHelpers = require(__hooks + "/lib/date-helpers.js");
   const importParsers = require(__hooks + "/lib/pure/subscription-import.js");
+  const brandLogo = require(__hooks + "/lib/pure/brand-logo.js");
   const recordTypes = require(__hooks + "/lib/pure/record-types.js");
   const recordTypeHelpers = require(__hooks + "/lib/record-type-helpers.js");
   if (!e.auth) throw new ForbiddenError("Authentication required");
@@ -135,7 +136,8 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
 
   const mainCurrencyId = getUserMainCurrency();
   const subsCol = $app.findCollectionByNameOrId("subscriptions");
-  const results = { imported: 0, skipped: 0, errors: [] };
+  const membersCol = $app.findCollectionByNameOrId("subscription_members");
+  const results = { imported: 0, skipped: 0, members_imported: 0, errors: [] };
 
   for (let i = 0; i < data.subscriptions.length; i++) {
     const sub = data.subscriptions[i];
@@ -144,6 +146,8 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       let autoRenew, inactive, notes, url, notify, notifyDaysBefore, cancellationDate;
       let endDate, paymentLimit, paymentsCompleted;
       let categoryId, paymentMethodId, payerId;
+      let autoMarkPaid = false, brandDomain = "", paymentAccount = "", members = [];
+      let startDate = "";
 
       if (isWallos) {
         // ── Wallos format ──
@@ -185,7 +189,10 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
         autoRenew = !!sub.auto_renew;
         inactive = !!sub.inactive;
         notify = !!sub.notify;
-        notifyDaysBefore = sub.notify_days_before || 3;
+        // 0 ("on the day") is a valid choice, so only a missing value defaults.
+        const daysBefore = parseInt(sub.notify_days_before, 10);
+        notifyDaysBefore = isFinite(daysBefore) && daysBefore >= 0 ? daysBefore : 3;
+        startDate = importParsers.normalizeImportDate(sub.start_date);
         cancellationDate = sub.cancellation_date || "";
         endDate = sub.end_date || "";
         paymentLimit = Math.max(0, parseInt(sub.payment_limit) || 0);
@@ -209,6 +216,12 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
         categoryId = findOrCreateCategory(sub.category);
         paymentMethodId = findOrCreatePaymentMethod(sub.payment_method);
         payerId = findOrCreatePayer(sub.payer);
+
+        // Fields added after the first export format; absent in older files.
+        autoMarkPaid = !!sub.auto_mark_paid;
+        brandDomain = brandLogo.normalizeBrandDomain(sub.brand_domain);
+        paymentAccount = String(sub.payment_account || "").trim().slice(0, 255);
+        members = importParsers.normalizeImportedMembers(sub.members);
       }
 
       if (!name) {
@@ -240,6 +253,10 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       rec.set("payments_completed", paymentsCompleted);
       rec.set("notes", notes);
       rec.set("url", url);
+      rec.set("auto_mark_paid", autoMarkPaid);
+      rec.set("brand_domain", brandDomain);
+      rec.set("payment_account", paymentAccount);
+      if (startDate) rec.set("start_date", startDate);
       if (cancellationDate) rec.set("cancellation_date", cancellationDate);
       if (endDate) rec.set("end_date", endDate);
       if (currencyId) rec.set("currency", currencyId);
@@ -257,6 +274,27 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
 
       $app.save(rec);
       results.imported++;
+
+      for (const member of members) {
+        try {
+          const m = new Record(membersCol);
+          m.set("subscription", rec.id);
+          m.set("user", userId);
+          m.set("name", member.name);
+          m.set("email", member.email);
+          m.set("amount", member.amount);
+          if (member.expires_at) m.set("expires_at", member.expires_at);
+          m.set("notes", member.notes);
+          $app.save(m);
+          results.members_imported++;
+        } catch (err) {
+          results.errors.push({
+            index: i,
+            name: name,
+            warning: "Member '" + member.name + "' not imported: " + String(err),
+          });
+        }
+      }
     } catch (err) {
       results.skipped++;
       results.errors.push({ index: i, name: sub.name || sub["Name"] || "?", reason: String(err) });
@@ -448,7 +486,20 @@ routerAdd("GET", "/api/subscriptions/export", (e) => {
       payerName = payer.get("name");
     } catch (_) { }
 
+    const members = $app.findRecordsByFilter(
+      "subscription_members", "subscription = {:id}", "name", 0, 0, { id: sub.id }
+    ).map((m) => ({
+      name: m.getString("name"),
+      email: m.getString("email"),
+      amount: m.get("amount"),
+      expires_at: m.getString("expires_at").slice(0, 10),
+      notes: m.getString("notes"),
+    }));
+
     exported.push({
+      // Stable reference within one export file; spreadsheet exports use it
+      // to tie rows of the Members sheet to their subscription.
+      id: sub.id,
       name: sub.get("name"),
       record_type: recordTypes.normalizeRecordType(sub.get("record_type")),
       price: sub.get("price"),
@@ -471,8 +522,17 @@ routerAdd("GET", "/api/subscriptions/export", (e) => {
       end_date: sub.get("end_date"),
       payment_limit: sub.get("payment_limit"),
       payments_completed: sub.get("payments_completed"),
+      auto_mark_paid: sub.get("auto_mark_paid"),
+      brand_domain: sub.getString("brand_domain"),
+      payment_account: sub.getString("payment_account"),
+      members: members,
     });
   }
 
-  return e.json(200, { subscriptions: exported });
+  return e.json(200, {
+    format: "zublo",
+    version: 2,
+    exported_at: new Date().toISOString(),
+    subscriptions: exported,
+  });
 });

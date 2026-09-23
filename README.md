@@ -103,6 +103,7 @@ Demo screenshots
 | Expiry reminders | Notifications before a shared member's access expires, through the same providers as payment reminders |
 | Services & brand logos | 48 preset services (Netflix, YouTube, Spotify, Prime Video, HBO Max, Microsoft 365, …) plus Brandfetch search, with hotlinked brand logos |
 | Payment account | Record which account a subscription is billed to, e.g. an Apple ID |
+| Export / import | Full backup and restore as JSON or Excel, members included; Wallos JSON import |
 | Calendar | Upcoming payments and member expiries in a calendar view |
 | Dashboard | High-level cost visibility and summary metrics |
 | Statistics | Spending breakdowns and trend visibility |
@@ -142,6 +143,28 @@ Made for plans you share or resell, such as a Microsoft 365 Family or Spotify Fa
   - members and their expiry status
   - URL and notes
   - shortcuts to edit, members and history
+
+## Export & Import
+
+The **Export** and **Import** buttons on the Subscriptions page move everything about your subscriptions between accounts or instances. Exported data:
+
+- every field: price, cycle, dates, finite schedules, reminders, auto mark paid, notes, URL
+- the service (brand domain) and the payment account
+- category, payment method and payer, by name
+- family-sharing members
+
+| Format | What you get | Import |
+|---|---|---|
+| JSON | One file: `{ "format": "zublo", "version": 2, "subscriptions": [...] }` with members nested in each subscription | ✓ |
+| Excel (.xlsx) | Two sheets: **Subscriptions**, and **Members** linked through the `subscription_id` column | ✓ (edit it in Excel, then import it back) |
+| Wallos JSON | Export from [Wallos](https://github.com/ellite/Wallos) | ✓ |
+
+How import handles your data:
+
+- It adds records and never overwrites existing ones, so importing the same file twice creates duplicates.
+- Categories, payment methods and payers are matched by name, and created if missing.
+- Currencies are matched by code. Unknown currency codes fall back to your main currency.
+- Older Zublo exports without the newer fields still import.
 
 ## AI Built In
 

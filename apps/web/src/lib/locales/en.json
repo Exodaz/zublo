@@ -124,7 +124,7 @@
   "import_success": "Imported {{count}} subscriptions",
   "import_partial": "Imported {{imported}} subscriptions ({{skipped}} skipped)",
   "import_error": "Failed to import. Please check the file format.",
-  "import_invalid_format": "Invalid file format. Expected a JSON file with subscriptions.",
+  "import_invalid_format": "Invalid file format. Expected a Zublo or Wallos JSON export, or a Zublo Excel export.",
   "search": "Search",
   "filter": "Filter",
   "sort": "Sort",
@@ -756,5 +756,6 @@
   "payment_info": "Payment",
   "manage_members": "Manage members",
   "subscription_summary_desc": "Summary of this subscription: cost, billing, payment and who shares it.",
-  "open_details": "Open details"
+  "open_details": "Open details",
+  "import_members": "{{count}} members"
 }
