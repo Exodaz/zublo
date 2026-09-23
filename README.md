@@ -29,6 +29,8 @@
   <a href="#perfect-for"><img src="https://img.shields.io/badge/model-self--hosted-2f855a?style=flat-square" alt="Self-hosted" /></a>
 </p>
 
+<p align="center"><strong>English</strong> · <a href="./README.th.md">ภาษาไทย</a></p>
+
 Zublo is an open source subscription tracker for people who want every recurring payment in one place, full control over their data, and a deployment flow that takes minutes instead of a weekend.
 
 It gives you a clean web UI, recurring payment visibility, reminders, calendar and statistics views, API access, and a Docker-first setup built for self-hosters.
@@ -96,7 +98,12 @@ Demo screenshots
 | Area | What you get |
 |---|---|
 | Subscriptions | Recurring billing cycles, due dates, payment context, change history with total spent |
-| Calendar | Upcoming payments in a calendar view |
+| Subscription summary | Click any subscription for a one-screen summary: cost per period, month and year, billing, payment account, members, notes |
+| Family sharing | People each subscription is shared with: name, email, amount paid, expiry date |
+| Expiry reminders | Notifications before a shared member's access expires, through the same providers as payment reminders |
+| Services & brand logos | 48 preset services (Netflix, YouTube, Spotify, Prime Video, HBO Max, Microsoft 365, …) plus Brandfetch search, with hotlinked brand logos |
+| Payment account | Record which account a subscription is billed to, e.g. an Apple ID |
+| Calendar | Upcoming payments and member expiries in a calendar view |
 | Dashboard | High-level cost visibility and summary metrics |
 | Statistics | Spending breakdowns and trend visibility |
 | Currencies | Multi-currency handling with exchange-rate sync |
@@ -104,6 +111,37 @@ Demo screenshots
 | AI | Chat-based workflows, recommendations, and pluggable providers |
 | Authentication | TOTP-based 2FA |
 | Deployment | Single self-hosted app with Docker |
+
+## Family Sharing, Services & Brand Logos
+
+Made for plans you share or resell, such as a Microsoft 365 Family or Spotify Family plan split between several people.
+
+**Family sharing members**
+
+- Open **Members** from a subscription card to add, edit or remove the people it is shared with: name, email, the amount each one pays and an optional expiry date.
+- Each member gets a status badge: active, expiring within 7 days, or expired. The card shows a member count tinted by the most urgent status.
+- Member expiries appear on the calendar next to payments, without being counted in payment totals. Clicking one opens the members dialog.
+- An hourly job sends reminders before a member expires. It reuses the reminder slots (days before + hour) and notification providers from your notification settings, and never sends the same reminder twice in a day.
+- Members are removed together with their subscription.
+
+**Services and brand logos**
+
+- The **Service** field in the subscription form lists 48 popular services and searches the [Brandfetch](https://brandfetch.com/developers/logo-api) brand database for anything else. You can also type any domain, e.g. `canva.com`.
+- Choosing a service fills an empty name and URL and sets the logo. Only the domain is stored.
+- Logos come from the Brandfetch CDN. Brandfetch requires hotlinking, so Zublo never downloads or stores them: `/api/brand-logo` redirects the browser to the CDN.
+- Subscriptions without an uploaded logo or a service fall back to the logo of their URL's domain. An uploaded logo always wins.
+- Brand logos need `BRANDFETCH_CLIENT_ID` (see [Configuration](#configuration)). Without it, a letter placeholder is shown.
+
+**Payment account and subscription summary**
+
+- **Payment account** records which account a subscription is billed to, such as the Apple ID that holds an in-app subscription. It is shown on the card and in the summary.
+- Clicking a subscription card opens a summary with:
+  - cost per billing period, per month, per year, and total spent so far
+  - billing dates and reminders
+  - payment details
+  - members and their expiry status
+  - URL and notes
+  - shortcuts to edit, members and history
 
 ## AI Built In
 
@@ -190,6 +228,26 @@ Important:
 - persist `/pb/pb_data`
 - set `PB_ENCRYPTION_KEY` in real deployments
 - the first registered user becomes the initial admin
+- optionally set `BRANDFETCH_CLIENT_ID` for brand logos (see below)
+
+### Configuration
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `PB_ENCRYPTION_KEY` | Recommended | Encrypts PocketBase settings at rest. Set it to a long random value in real deployments. |
+| `BRANDFETCH_CLIENT_ID` | Optional | Enables brand logos and brand search for services. Get a free Client ID at https://developers.brandfetch.com/register (Logo API section). |
+
+About `BRANDFETCH_CLIENT_ID`:
+
+- **Use the Client ID, not the API key.** The Client ID is short and starts with `1id…`. It is meant to appear in public image URLs.
+- The API key is a secret and does not work with the logo CDN.
+- The free tier covers up to 1M requests per month.
+- With Docker Compose, put the values in a `.env` file next to `docker-compose.yml`:
+
+```dotenv
+PB_ENCRYPTION_KEY=change-me-in-production
+BRANDFETCH_CLIENT_ID=1idXXXXXXXXXXXXXXX
+```
 
 ### Running Behind A Reverse Proxy
 
@@ -217,7 +275,21 @@ This starts:
 - Vite on `http://localhost:5173`
 - PocketBase on `http://127.0.0.1:8080`
 
-For non-Docker local development, the repository expects a PocketBase binary at `apps/backend/pocketbase`.
+For non-Docker local development, the repository expects a PocketBase binary at `apps/backend/pocketbase`. It is git-ignored; download the version pinned in the `Dockerfile` (`PB_VERSION`) for your platform from the [PocketBase releases](https://github.com/pocketbase/pocketbase/releases).
+
+To try brand logos locally, pass the Client ID when starting:
+
+```bash
+BRANDFETCH_CLIENT_ID=1idXXXXXXXXXXXXXXX bun run dev
+```
+
+Tests:
+
+```bash
+bun run test            # frontend + backend
+bun run test:coverage   # same, enforcing the 100% coverage thresholds CI uses
+bun run lint
+```
 
 ## Architecture At A Glance
 
@@ -253,7 +325,8 @@ For frontend-specific structure and page composition rules, see [apps/web/ARCHIT
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Makefile
-└── README.md
+├── README.md      # English
+└── README.th.md   # Thai
 ```
 
 ## Who This Repository Is For
