@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { type MemberExpiryStatus, worstMemberStatus } from "@/lib/memberExpiry";
+import { getPaymentIconSrc } from "@/lib/paymentMethodIcons";
 import { isCredit } from "@/lib/recordTypes";
 import {
   cn,
@@ -28,59 +29,9 @@ import {
   toMainCurrency,
   toMonthly,
 } from "@/lib/utils";
-import { paymentMethodsService } from "@/services/paymentMethods";
 import type { Currency, PaymentMethod, Subscription, SubscriptionMember } from "@/types";
 
 // ── Payment method icon helpers ───────────────────────────────────────────────
-
-const PAYMENT_ICON_MAP: Record<string, string> = {
-  visa: "Visa.png",
-  mastercard: "Mastercard.png",
-  "american express": "Amex.png",
-  amex: "Amex.png",
-  discover: "Discover.png",
-  "diners club": "DinersClub.png",
-  jcb: "JCB.png",
-  unionpay: "unionpay.png",
-  "union pay": "unionpay.png",
-  maestro: "Maestro.png",
-  paypal: "PayPal.png",
-  "apple pay": "ApplePay.png",
-  "google pay": "GooglePay.png",
-  "samsung pay": "samsungpay.png",
-  "amazon pay": "amazonpay.png",
-  alipay: "alipay.png",
-  "wechat pay": "wechat.png",
-  wechat: "wechat.png",
-  venmo: "venmo.png",
-  stripe: "Stripe.png",
-  klarna: "Klarna.png",
-  affirm: "affirm.png",
-  skrill: "skrill.png",
-  paysafecard: "paysafe.png",
-  paysafe: "paysafe.png",
-  ideal: "ideal.png",
-  bancontact: "bancontact.png",
-  giropay: "gitopay.png",
-  sofort: "sofort.png",
-  payoneer: "Payoneer.png",
-  interac: "Interac.png",
-  bitcoin: "Bitcoin.png",
-  "bitcoin cash": "BitcoinCash.png",
-  ethereum: "Etherium.png",
-  litecoin: "Lightcoin.png",
-  "direct debit": "directdebit.png",
-  directdebit: "directdebit.png",
-  "shop pay": "shoppay.png",
-  shoppay: "shoppay.png",
-  "facebook pay": "facebookpay.png",
-};
-
-function getPaymentIconSrc(method: PaymentMethod): string | null {
-  if (method.icon) return paymentMethodsService.iconUrl(method);
-  const key = method.name.toLowerCase();
-  return PAYMENT_ICON_MAP[key] ? `/assets/payments/${PAYMENT_ICON_MAP[key]}` : null;
-}
 
 function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
   const [err, setErr] = useState(false);

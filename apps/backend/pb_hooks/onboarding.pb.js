@@ -119,7 +119,7 @@ onRecordAfterCreateSuccess((e) => {
     "Cash App", "Zelle", "Stripe", "Square",
     "Klarna", "Afterpay", "Affirm", "Skrill",
     "Neteller", "Paysafecard", "iDEAL", "Bancontact",
-    "Giropay", "Sofort", "Other",
+    "Giropay", "Sofort", "App Store Credit", "Other",
   ];
 
   for (const name of defaultPayments) {
