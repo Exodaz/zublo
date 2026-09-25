@@ -78,9 +78,17 @@ vi.mock("@/lib/toast", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
 }));
 
-vi.mock("@/components/settings/exchange-rates/fixer.constants", () => ({
-  FIXER_PROVIDER_LINKS: { fixer: "https://fixer.io", apilayer: "https://apilayer.com" },
+vi.mock("@/components/settings/exchange-rates/fixer.constants", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./fixer.constants")>()),
+  FIXER_PROVIDER_LINKS: {
+    fixer: "https://fixer.io",
+    apilayer: "https://apilayer.com",
+    frankfurter: "https://frankfurter.dev",
+  },
 }));
+
+// Fixer settings that were never saved: shows the key-based UI.
+const UNSAVED_FIXER = { provider: "fixer" };
 
 describe("FixerTab", () => {
   beforeEach(() => {
@@ -108,6 +116,7 @@ describe("FixerTab", () => {
   });
 
   it("renders fixer provider select and api key field", () => {
+    settingsData = UNSAVED_FIXER;
     render(<FixerTab />);
     expect(screen.getByText("fixer_api_key")).toBeInTheDocument();
   });
@@ -131,7 +140,7 @@ describe("FixerTab", () => {
   });
 
   it("calls save mutate when save button clicked with api key entered", () => {
-    settingsData = undefined;
+    settingsData = UNSAVED_FIXER;
     render(<FixerTab />);
     // Enter an api key first
     const input = document.querySelector("input[type='password']") as HTMLInputElement;
@@ -202,6 +211,7 @@ describe("FixerTab", () => {
   // the component keeps no local copy of it. So onSuccess does not flip a
   // flag; it drops the local edits and asks the server again.
   it("saveMut onSuccess clears the typed key and refetches the stored state", () => {
+    settingsData = UNSAVED_FIXER;
     render(<FixerTab />);
     const input = document.querySelector("input[type='password']") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "newkey" } });
@@ -327,7 +337,7 @@ describe("FixerTab", () => {
 
   it("saveMut mutationFn includes api_key when new key is entered", async () => {
     const { fixerService } = await import("@/services/fixer");
-    settingsData = undefined;
+    settingsData = UNSAVED_FIXER;
     render(<FixerTab />);
     const input = document.querySelector("input[type='password']") as HTMLInputElement;
     // fireEvent.change triggers a re-render; use latestSaveOpts() to get fresh closure
@@ -353,8 +363,8 @@ describe("FixerTab", () => {
 
   it("saveMut mutationFn includes empty api_key when no new key and no settings id and not configured", async () => {
     const { fixerService } = await import("@/services/fixer");
-    // No settings — settings?.id is falsy, apiKeyConfigured is false
-    settingsData = undefined;
+    // Unsaved Fixer settings — settings?.id is falsy, apiKeyConfigured is false
+    settingsData = UNSAVED_FIXER;
     render(<FixerTab />);
     // No key entered, no remove clicked → third branch: !settings?.id || !apiKeyConfigured
     await latestSaveOpts().mutationFn?.();
@@ -400,5 +410,53 @@ describe("FixerTab", () => {
     settingsData = { id: "f1", api_key_configured: false }; // no provider field
     render(<FixerTab />);
     expect(screen.getByText("fixer_api")).toBeInTheDocument();
+  });
+
+  describe("Frankfurter", () => {
+    it("is the default for new setups, needs no key and can be saved right away", async () => {
+      const { fixerService } = await import("@/services/fixer");
+      settingsData = undefined;
+      render(<FixerTab />);
+
+      expect(screen.getByText(/frankfurter_hint/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /frankfurter\.dev/ })).toHaveAttribute(
+        "href",
+        "https://frankfurter.dev",
+      );
+      expect(document.querySelector("input[type='password']")).toBeNull();
+      expect(screen.getByText("save").closest("button")).toBeEnabled();
+      // Rates can only be fetched once Frankfurter has been saved.
+      expect(screen.getByText("update_exchange").closest("button")).toBeDisabled();
+
+      await latestSaveOpts().mutationFn?.();
+      expect(vi.mocked(fixerService.createSettings)).toHaveBeenCalledWith({
+        provider: "frankfurter",
+        enabled: true,
+        user: "u1",
+      });
+    });
+
+    it("updates saved settings without touching a stored key, and allows updating rates", async () => {
+      const { fixerService } = await import("@/services/fixer");
+      settingsData = { id: "f1", provider: "frankfurter", enabled: true, api_key_configured: true };
+      render(<FixerTab />);
+
+      expect(screen.getByText("update_exchange").closest("button")).toBeEnabled();
+      expect(screen.getByText("fixer_configured_hint")).toBeInTheDocument();
+
+      await latestSaveOpts().mutationFn?.();
+      expect(vi.mocked(fixerService.updateSettings)).toHaveBeenCalledWith("f1", {
+        provider: "frankfurter",
+        enabled: true,
+        user: "u1",
+      });
+    });
+
+    it("cannot update rates while saved Frankfurter settings are disabled", () => {
+      settingsData = { id: "f1", provider: "frankfurter", enabled: false };
+      render(<FixerTab />);
+      expect(screen.getByText("update_exchange").closest("button")).toBeDisabled();
+      expect(screen.queryByText("fixer_configured_hint")).not.toBeInTheDocument();
+    });
   });
 });

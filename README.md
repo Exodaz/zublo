@@ -107,7 +107,7 @@ Demo screenshots
 | Calendar | Upcoming payments and member expiries in a calendar view |
 | Dashboard | High-level cost visibility and summary metrics |
 | Statistics | Spending breakdowns and trend visibility |
-| Currencies | Multi-currency handling with exchange-rate sync |
+| Currencies | Multi-currency handling with exchange-rate sync from [Frankfurter](https://frankfurter.dev) (free, no API key, 200+ currencies), Fixer.io or APILayer |
 | API access | REST usage through scoped API keys |
 | AI | Chat-based workflows, recommendations, and pluggable providers |
 | Authentication | TOTP-based 2FA |

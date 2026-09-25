@@ -225,7 +225,7 @@
   "fixer_provider": "Provider",
   "fixer_api_key": "API Key",
   "fixer_no_key_title": "No Exchange Rate API Key",
-  "fixer_no_key_desc": "To update exchange rates you need to configure a Fixer.io or APILayer API key in Settings.",
+  "fixer_no_key_desc": "To update exchange rates, choose a provider in Settings: Frankfurter (free, no key) or a Fixer.io / APILayer API key.",
   "fixer_configured_hint": "Exchange rates are updated automatically twice a day (midnight and noon). You can also update them manually at any time.",
   "get_free_api_key": "Get a free API key",
   "go_to_settings": "Go to Settings",
@@ -757,5 +757,7 @@
   "manage_members": "Manage members",
   "subscription_summary_desc": "Summary of this subscription: cost, billing, payment and who shares it.",
   "open_details": "Open details",
-  "import_members": "{{count}} members"
+  "import_members": "{{count}} members",
+  "frankfurter_option": "Frankfurter (free, no API key)",
+  "frankfurter_hint": "Frankfurter publishes daily reference rates from central banks for 200+ currencies. No sign-up or API key needed; just save to enable it."
 }

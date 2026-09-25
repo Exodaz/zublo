@@ -7,10 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { ExchangeRateProvider } from "@/types";
 
 interface FixerProviderSelectProps {
-  provider: "fixer" | "apilayer";
-  onProviderChange: (value: "fixer" | "apilayer") => void;
+  provider: ExchangeRateProvider;
+  onProviderChange: (value: ExchangeRateProvider) => void;
 }
 
 export function FixerProviderSelect({
@@ -27,6 +28,7 @@ export function FixerProviderSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="rounded-xl">
+          <SelectItem value="frankfurter">{t("frankfurter_option")}</SelectItem>
           <SelectItem value="fixer">Fixer.io</SelectItem>
           <SelectItem value="apilayer">APILayer</SelectItem>
         </SelectContent>

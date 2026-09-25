@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TrendingUp } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useEffect,useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { FIXER_PROVIDER_LINKS } from "@/components/settings/exchange-rates/fixer.constants";
+import {
+  exchangeRatesConfigured,
+  FIXER_PROVIDER_LINKS,
+} from "@/components/settings/exchange-rates/fixer.constants";
 import { FixerActions } from "@/components/settings/exchange-rates/FixerActions";
 import { FixerApiKeyField } from "@/components/settings/exchange-rates/FixerApiKeyField";
 import { FixerProviderSelect } from "@/components/settings/exchange-rates/FixerProviderSelect";
@@ -12,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "@/lib/toast";
 import { fixerService } from "@/services/fixer";
-import type { FixerSettings } from "@/types";
+import type { ExchangeRateProvider, FixerSettings } from "@/types";
 
 export function FixerTab() {
   const { t } = useTranslation();
@@ -21,7 +25,9 @@ export function FixerTab() {
 
   const [apiKey, setApiKey] = useState("");
   const [removeStoredApiKey, setRemoveStoredApiKey] = useState(false);
-  const [provider, setProvider] = useState<"fixer" | "apilayer">("fixer");
+  // New setups start on Frankfurter: it is free and works without a key.
+  const [provider, setProvider] = useState<ExchangeRateProvider>("frankfurter");
+  const isFrankfurter = provider === "frankfurter";
 
   const { data: settings } = useQuery({
     queryKey: ["fixer_settings", user?.id ?? ""],
@@ -42,6 +48,14 @@ export function FixerTab() {
 
   const saveMut = useMutation({
     mutationFn: () => {
+      if (isFrankfurter) {
+        // No key involved: leave any stored key alone for switching back later.
+        const payload: Partial<FixerSettings> = { provider, enabled: true, user: user!.id };
+        return settings?.id
+          ? fixerService.updateSettings(settings.id, payload)
+          : fixerService.createSettings(payload);
+      }
+
       const trimmedApiKey = apiKey.trim();
       const hasEffectiveApiKey =
         !removeStoredApiKey && (trimmedApiKey.length > 0 || isKeySavedOnServer);
@@ -91,9 +105,12 @@ export function FixerTab() {
     onError: (err: Error) => toast.error(err.message || t("error")),
   });
 
-  const canSave = removeStoredApiKey || apiKey.trim().length > 0 || isKeySavedOnServer;
-  const canUpdateRates =
-    !removeStoredApiKey && (isKeySavedOnServer || apiKey.trim().length > 0);
+  const canSave =
+    isFrankfurter || removeStoredApiKey || apiKey.trim().length > 0 || isKeySavedOnServer;
+  // Updating uses the saved settings, so Frankfurter has to be saved first.
+  const canUpdateRates = isFrankfurter
+    ? settings?.provider === "frankfurter" && exchangeRatesConfigured(settings)
+    : !removeStoredApiKey && (isKeySavedOnServer || apiKey.trim().length > 0);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -110,6 +127,20 @@ export function FixerTab() {
       <div className="space-y-6 ">
         <FixerProviderSelect provider={provider} onProviderChange={setProvider} />
 
+        {isFrankfurter ? (
+          <p className="text-sm text-muted-foreground bg-muted/50 rounded-xl p-3">
+            {t("frankfurter_hint")}{" "}
+            <a
+              href={FIXER_PROVIDER_LINKS.frankfurter}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              frankfurter.dev
+              <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
+          </p>
+        ) : (
         <FixerApiKeyField
           apiKey={apiKey}
           apiKeyConfigured={isKeySavedOnServer}
@@ -125,6 +156,7 @@ export function FixerTab() {
             setRemoveStoredApiKey(true);
           }}
         />
+        )}
 
         <FixerActions
           canSave={canSave}
@@ -135,7 +167,7 @@ export function FixerTab() {
           onUpdateRates={() => updateRatesMut.mutate()}
         />
 
-        {isKeySavedOnServer && !removeStoredApiKey && (
+        {canUpdateRates && (isFrankfurter || !removeStoredApiKey) && (
           <p className="text-xs text-muted-foreground bg-muted/50 rounded-xl p-3">
             {t("fixer_configured_hint")}
           </p>

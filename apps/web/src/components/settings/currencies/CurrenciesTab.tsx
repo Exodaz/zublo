@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { CurrencyFormRow } from "@/components/settings/currencies/CurrencyFormRow";
 import { CurrencyListItem } from "@/components/settings/currencies/CurrencyListItem";
+import { exchangeRatesConfigured } from "@/components/settings/exchange-rates/fixer.constants";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Separator } from "@/components/ui/separator";
@@ -111,7 +112,7 @@ export function CurrenciesTab() {
       toast.success(t("success_update"));
 
       // Rates are relative to the main currency — auto-refresh when base changes
-      if (fixerSettings?.api_key_configured) {
+      if (exchangeRatesConfigured(fixerSettings)) {
         fixerService
           .updateRates()
           .then(() =>

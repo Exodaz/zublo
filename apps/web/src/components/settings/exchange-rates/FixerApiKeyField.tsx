@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ExchangeRateProvider } from "@/types";
 
 interface FixerApiKeyFieldProps {
   apiKey: string;
   apiKeyConfigured: boolean;
-  provider: "fixer" | "apilayer";
+  provider: ExchangeRateProvider;
   providerLink: string;
   removeStoredApiKey: boolean;
   onApiKeyChange: (value: string) => void;

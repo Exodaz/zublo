@@ -123,59 +123,16 @@ routerAdd("POST", "/api/cron/{job}", function(e) {
 
   // ----------------------------------------------------------------
   if (job === "update_exchange_rates") {
-    // NOTE: api_key is a hidden field (migration 0017) — PocketBase silently drops hidden
-    // fields from filter expressions. Fetch all fixer_settings and validate the key in JS.
-    var fixers = $app.findRecordsByFilter("fixer_settings", "1=1", "", 0, 0);
+    var exchangeUpdate = require(__hooks + "/lib/exchange-update.js");
     var updated = 0;
-
-    for (var i = 0; i < fixers.length; i++) {
-      var fixer = fixers[i];
-      var apiKey = fixer.get("api_key");
-      // Skip records where no API key has been stored yet
-      if (!String(apiKey || "").trim()) continue;
-      var provider = fixer.get("provider") || "fixer";
-      var userId = fixer.get("user");
+    var targets = exchangeUpdate.findUpdatableSettings($app);
+    for (var i = 0; i < targets.length; i++) {
       try {
-        // Use is_main flag as authoritative source — user.main_currency may be stale
-        var mainCurrencies = $app.findRecordsByFilter("currencies", "user = {:u} && is_main = true", "", 1, 0, { u: userId });
-        if (mainCurrencies.length === 0) continue;
-        var mainCode = mainCurrencies[0].get("code");
-
-        // Free plans only support EUR as base — use HTTPS for Docker/proxy compatibility
-        var url = provider === "apilayer"
-          ? "https://api.apilayer.com/fixer/latest?base=EUR"
-          : "https://data.fixer.io/api/latest?access_key=" + apiKey;
-        var hdrs = provider === "apilayer" ? { apikey: apiKey } : {};
-        var res = $http.send({ url: url, method: "GET", headers: hdrs });
-
-        if (res.statusCode === 200 && res.json && res.json.rates) {
-          var eurRates = res.json.rates;
-          eurRates["EUR"] = 1;
-          var mainEurRate = eurRates[mainCode];
-          if (!mainEurRate) continue; // unknown main currency, skip
-
-          var curs = $app.findRecordsByFilter("currencies", "user = {:u}", "", 0, 0, { u: userId });
-          for (var ci = 0; ci < curs.length; ci++) {
-            var code = curs[ci].get("code");
-            if (code === mainCode) {
-              curs[ci].set("rate", 1);
-              $app.save(curs[ci]);
-              updated++;
-            } else if (eurRates[code] !== undefined) {
-              curs[ci].set("rate", eurRates[code] / mainEurRate);
-              $app.save(curs[ci]);
-              updated++;
-            }
-          }
-          try {
-            var logs = $app.findRecordsByFilter("exchange_log", "1=1", "", 1, 0);
-            if (logs.length > 0) { logs[0].set("last_update", new Date().toISOString()); $app.save(logs[0]); }
-            else { var lc = $app.findCollectionByNameOrId("exchange_log"); var lr = new Record(lc); lr.set("last_update", new Date().toISOString()); $app.save(lr); }
-          } catch(_) {}
-        }
-      } catch(err) { console.log("[Zublo] manual updateExchange error:", err); }
+        updated += exchangeUpdate.updateRatesForUser($app, targets[i]).updated;
+      } catch (err) {
+        console.log("[Zublo] manual updateExchange error:", err);
+      }
     }
-
     return e.json(200, { message: "update_exchange_rates: updated " + updated + " rate(s)" });
   }
 

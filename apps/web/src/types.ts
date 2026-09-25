@@ -247,13 +247,16 @@ export interface NotificationsConfig {
   serverchan_send_key?: string;
 }
 
+/** Frankfurter is free and needs no API key; the others need one. */
+export type ExchangeRateProvider = "fixer" | "apilayer" | "frankfurter";
+
 export interface FixerSettings {
   id: string;
   user: string;
   enabled: boolean;
   api_key?: string;
   api_key_configured?: boolean;
-  provider: "fixer" | "apilayer";
+  provider: ExchangeRateProvider;
   base_currency?: string;
 }
 
