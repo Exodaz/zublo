@@ -102,6 +102,7 @@ Demo screenshots
 | Family sharing | People each subscription is shared with: name, email, amount paid, expiry date |
 | Expiry reminders | Notifications before a shared member's access expires, through the same providers as payment reminders |
 | Services & brand logos | 48 preset services (Netflix, YouTube, Spotify, Prime Video, HBO Max, Microsoft 365, …) plus Brandfetch search, with hotlinked brand logos |
+| Service tabs & grouping | Tabs per service (MS365, Netflix, Spotify, …) built from each subscription's service or URL, and an optional grouped view with a count, yearly cost and member total per service |
 | Payment account | Record which account a subscription is billed to, e.g. an Apple ID |
 | Export / import | Full backup and restore as JSON or Excel, members included; Wallos JSON import |
 | Calendar | Upcoming payments and member expiries in a calendar view |

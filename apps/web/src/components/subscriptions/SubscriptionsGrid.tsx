@@ -2,6 +2,9 @@ import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { SubscriptionCard } from "@/components/subscriptions/SubscriptionCard";
+import { ServiceIcon } from "@/components/subscriptions/SubscriptionsServiceTabs";
+import { groupByService, OTHER_SERVICE } from "@/lib/serviceGroups";
+import { formatPrice } from "@/lib/utils";
 import type { Currency, Subscription, SubscriptionMember } from "@/types";
 
 function SubscriptionsLoadingGrid({ layout }: { layout: "grid" | "list" }) {
@@ -61,6 +64,8 @@ interface SubscriptionsGridProps {
   onOpen?: (subscription: Subscription) => void;
   /** Family-sharing members keyed by subscription id. */
   membersBySubscription?: Record<string, SubscriptionMember[]>;
+  /** Show a header per service with its subscriptions underneath. */
+  groupByService?: boolean;
 }
 
 export function SubscriptionsGrid({
@@ -79,7 +84,10 @@ export function SubscriptionsGrid({
   onDelete,
   onOpen,
   membersBySubscription = {},
+  groupByService: grouped = false,
 }: SubscriptionsGridProps) {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return <SubscriptionsLoadingGrid layout={layout} />;
   }
@@ -88,13 +96,11 @@ export function SubscriptionsGrid({
     return <SubscriptionsEmptyState />;
   }
 
-  return (
-    <div
-      className={
-        layout === "list" ? "space-y-2" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      }
-    >
-      {subscriptions.map((subscription) => (
+  const containerClass =
+    layout === "list" ? "space-y-2" : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3";
+
+  const renderCards = (items: Subscription[]) =>
+    items.map((subscription) => (
         <SubscriptionCard
           key={subscription.id}
           sub={subscription}
@@ -112,6 +118,32 @@ export function SubscriptionsGrid({
           onOpen={onOpen ? () => onOpen(subscription) : undefined}
           members={membersBySubscription[subscription.id]}
         />
+    ));
+
+  if (!grouped) {
+    return <div className={containerClass}>{renderCards(subscriptions)}</div>;
+  }
+
+  const symbol = mainCurrency?.symbol ?? "$";
+  return (
+    <div className="space-y-8">
+      {groupByService(subscriptions, membersBySubscription).map((group) => (
+        <section key={group.key || "other"} aria-label={group.label || t("other_services")} className="space-y-3">
+          <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2">
+            <ServiceIcon serviceKey={group.key} className="h-7 w-7 rounded-lg" />
+            <h2 className="text-lg font-semibold">
+              {group.key === OTHER_SERVICE ? t("other_services") : group.label}
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {t("service_group_summary", {
+                count: group.subscriptions.length,
+                total: formatPrice(group.yearlyTotal, symbol, { currencyCode: mainCurrency?.code }),
+              })}
+              {group.memberCount > 0 && ` · ${t("members_count", { count: group.memberCount })}`}
+            </span>
+          </header>
+          <div className={containerClass}>{renderCards(group.subscriptions)}</div>
+        </section>
       ))}
     </div>
   );

@@ -759,5 +759,9 @@
   "open_details": "Open details",
   "import_members": "{{count}} members",
   "frankfurter_option": "Frankfurter (free, no API key)",
-  "frankfurter_hint": "Frankfurter publishes daily reference rates from central banks for 200+ currencies. No sign-up or API key needed; just save to enable it."
+  "frankfurter_hint": "Frankfurter publishes daily reference rates from central banks for 200+ currencies. No sign-up or API key needed; just save to enable it.",
+  "services": "Services",
+  "other_services": "Other",
+  "group_by_service": "Group by service",
+  "service_group_summary": "{{count}} subscription(s) · {{total}}/year"
 }

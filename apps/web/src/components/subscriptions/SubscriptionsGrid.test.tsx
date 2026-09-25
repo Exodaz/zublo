@@ -173,4 +173,47 @@ describe("SubscriptionsGrid", () => {
     fireEvent.click(screen.getByText("Netflix"));
     expect(onOpen).toHaveBeenCalledWith(sub);
   });
+
+  it("groups cards under a header per service when asked", () => {
+    render(
+      <SubscriptionsGrid
+        isLoading={false}
+        subscriptions={[
+          getSub({ id: "m1", name: "MS A", brand_domain: "microsoft.com", price: 100 }),
+          getSub({ id: "m2", name: "MS B", brand_domain: "microsoft.com", price: 50 }),
+          getSub({ id: "g1", name: "Gym", url: "" }),
+        ]}
+        groupByService
+        membersBySubscription={{
+          m1: [{ id: "x", subscription: "m1", user: "user-1", name: "Alice" }],
+        }}
+        mainCurrency={{ id: "c", name: "Baht", symbol: "฿", code: "THB", rate: 1, is_main: true, user: "user-1" }}
+        {...baseHandlers}
+      />,
+    );
+
+    const microsoft = screen.getByRole("region", { name: "Microsoft 365" });
+    expect(microsoft).toHaveTextContent("Microsoft 365");
+    expect(microsoft).toHaveTextContent("service_group_summary");
+    expect(microsoft).toHaveTextContent("members_count");
+    expect(microsoft).toHaveTextContent("MS A");
+    expect(microsoft).toHaveTextContent("MS B");
+
+    const other = screen.getByRole("region", { name: "other_services" });
+    expect(other).toHaveTextContent("Gym");
+    expect(other).not.toHaveTextContent("members_count");
+  });
+
+  it("falls back to the dollar sign in group totals without a main currency", () => {
+    render(
+      <SubscriptionsGrid
+        isLoading={false}
+        subscriptions={[getSub({ brand_domain: "netflix.com" })]}
+        groupByService
+        layout="list"
+        {...baseHandlers}
+      />,
+    );
+    expect(screen.getByRole("region", { name: "Netflix" })).toBeInTheDocument();
+  });
 });

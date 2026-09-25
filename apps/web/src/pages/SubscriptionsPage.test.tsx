@@ -239,6 +239,7 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onDelete,
     onOpen,
     membersBySubscription,
+    groupByService,
   }: {
     subscriptions: Array<{ id: string; name: string }>;
     layout: "grid" | "list";
@@ -250,9 +251,12 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onDelete: (id: string) => void;
     onOpen: (subscription: { id: string; name: string }) => void;
     membersBySubscription: Record<string, unknown[]>;
+    groupByService: boolean;
   }) => (
     <div>
       <div>grid:{subscriptions.length}</div>
+      <div>grid-names:{subscriptions.map((s) => s.name).join(",")}</div>
+      <div>grouped:{String(groupByService)}</div>
       <div>
         grouped:
         {Object.entries(membersBySubscription)
@@ -747,6 +751,74 @@ describe("SubscriptionsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "detail-edit" }));
     expect(screen.queryByText(/^detail:/)).not.toBeInTheDocument();
     expect(screen.getByText("form:Netflix")).toBeInTheDocument();
+  });
+
+  describe("service tabs", () => {
+    // The test runtime has no working localStorage; an in-memory stand-in.
+    let store: Map<string, string>;
+    beforeEach(() => {
+      store = new Map();
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => void store.set(key, value),
+      });
+      mocks.listSubscriptions.mockResolvedValue([
+        { id: "sub-1", name: "Netflix", brand_domain: "netflix.com" },
+        { id: "sub-2", name: "MS A", brand_domain: "microsoft.com" },
+        { id: "sub-3", name: "MS B", url: "https://www.microsoft.com" },
+      ]);
+    });
+
+    it("filters by the selected service and back to all", async () => {
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("tab", { name: /Microsoft 365/ }));
+      expect(screen.getByText("grid-names:MS A,MS B")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("tab", { name: /^all/ }));
+      expect(screen.getByText("grid:3")).toBeInTheDocument();
+    });
+
+    it("remembers grouping between visits", async () => {
+      const { Wrapper } = createQueryClientWrapper();
+      const { unmount } = render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+      expect(screen.getByText("grouped:false")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "group_by_service" }));
+      expect(screen.getByText("grouped:true")).toBeInTheDocument();
+      expect(store.get("zublo_group_by_service")).toBe("1");
+      unmount();
+
+      render(<SubscriptionsPage />, { wrapper: createQueryClientWrapper().Wrapper });
+      expect(screen.getByText("grouped:true")).toBeInTheDocument();
+      await waitFor(() => screen.getByText("grid:3"));
+      fireEvent.click(screen.getByRole("button", { name: "group_by_service" }));
+      expect(store.get("zublo_group_by_service")).toBe("0");
+    });
+
+    it("still toggles grouping when storage is unavailable", async () => {
+      const blocked = () => {
+        throw new Error("blocked");
+      };
+      vi.stubGlobal("localStorage", { getItem: blocked, setItem: blocked });
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+      expect(screen.getByText("grouped:false")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "group_by_service" }));
+      expect(screen.getByText("grouped:true")).toBeInTheDocument();
+    });
+
+    it("hides the tabs when there are no subscriptions", async () => {
+      mocks.listSubscriptions.mockResolvedValue([]);
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:0"));
+      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    });
   });
 
   it("renders with empty userId when user is null (covers user?.id ?? '' fallback)", () => {

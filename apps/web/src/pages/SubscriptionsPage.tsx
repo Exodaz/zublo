@@ -14,11 +14,14 @@ import {
   type SubscriptionSortKey,
 } from "@/components/subscriptions/subscriptionsPage.types";
 import { SubscriptionsPageHeader } from "@/components/subscriptions/SubscriptionsPageHeader";
+import { SubscriptionsServiceTabs } from "@/components/subscriptions/SubscriptionsServiceTabs";
 import { SubscriptionsToolbar } from "@/components/subscriptions/SubscriptionsToolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilteredSubscriptions } from "@/hooks/useFilteredSubscriptions";
+import { LS_KEYS } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
+import { groupByService, serviceKeyOf } from "@/lib/serviceGroups";
 import {
   MEMBERS_SHEET,
   readImportFile,
@@ -52,6 +55,25 @@ export function SubscriptionsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [serviceFilter, setServiceFilter] = useState<string | null>(null);
+  const [groupedByService, setGroupedByService] = useState(() => {
+    try {
+      return localStorage.getItem(LS_KEYS.GROUP_BY_SERVICE) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleGroupedByService = () => {
+    setGroupedByService((current) => {
+      try {
+        localStorage.setItem(LS_KEYS.GROUP_BY_SERVICE, current ? "0" : "1");
+      } catch {
+        // Storage unavailable (private mode): the choice lasts for this visit.
+      }
+      return !current;
+    });
+  };
   const [isImporting, setIsImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,6 +165,13 @@ export function SubscriptionsPage() {
     sortDir,
     disabledToBottom: user?.disabled_to_bottom,
   });
+
+  // Tabs count every subscription so switching filters never hides a service.
+  const serviceGroups = useMemo(() => groupByService(subscriptions), [subscriptions]);
+  const visibleSubscriptions =
+    serviceFilter === null
+      ? filteredSubscriptions
+      : filteredSubscriptions.filter((sub) => serviceKeyOf(sub) === serviceFilter);
 
   const handleExport = async (format: "json" | "xlsx") => {
     try {
@@ -249,6 +278,17 @@ export function SubscriptionsPage() {
         onViewChange={setView}
       />
 
+      {serviceGroups.length > 0 ? (
+        <SubscriptionsServiceTabs
+          groups={serviceGroups}
+          total={subscriptions.length}
+          selected={serviceFilter}
+          grouped={groupedByService}
+          onSelect={setServiceFilter}
+          onToggleGrouped={toggleGroupedByService}
+        />
+      ) : null}
+
       {showFilters ? (
         <SubscriptionsFiltersPanel
           categories={categories}
@@ -259,7 +299,8 @@ export function SubscriptionsPage() {
 
       <SubscriptionsGrid
         isLoading={isLoading}
-        subscriptions={filteredSubscriptions}
+        subscriptions={visibleSubscriptions}
+        groupByService={groupedByService}
         layout={view}
         mainCurrency={mainCurrency}
         convertCurrency={user?.convert_currency}

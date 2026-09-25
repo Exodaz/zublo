@@ -7,6 +7,8 @@
 export const LS_KEYS = {
   LANGUAGE: "zublo_language",
   COLOR_THEME: "zublo_color_theme",
+  /** Whether the Subscriptions page groups cards under a header per service. */
+  GROUP_BY_SERVICE: "zublo_group_by_service",
   /** Returns the trusted-device key for a given user (TOTP remember-device). */
   totpTrusted: (userId: string) => `totp_trusted_${userId}`,
 } as const;
