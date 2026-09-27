@@ -219,6 +219,9 @@ export function SubscriptionCard({
   onMembers,
   onDelete,
   onOpen,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
   members = [],
   layout = "grid",
 }: {
@@ -236,6 +239,10 @@ export function SubscriptionCard({
   onDelete: () => void;
   /** Opens the detail summary; clicks on the card's own buttons and links don't. */
   onOpen?: () => void;
+  /** Select mode: a click toggles selection instead of opening the summary. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
   members?: SubscriptionMember[];
   layout?: "grid" | "list";
 }) {
@@ -257,24 +264,36 @@ export function SubscriptionCard({
   const days = daysUntil(sub.next_payment);
   const progress = showProgress ? subscriptionProgress(sub.start_date, sub.next_payment) : 0;
 
-  const openProps = onOpen
+  const activate = selectable ? onToggleSelect : onOpen;
+  const openProps = activate
     ? {
         role: "button",
         tabIndex: 0,
-        "aria-label": `${t("open_details")}: ${sub.name}`,
+        "aria-label": `${t(selectable ? "select" : "open_details")}: ${sub.name}`,
+        ...(selectable ? { "aria-pressed": selected } : {}),
         onClick: (event: MouseEvent<HTMLDivElement>) => {
-          if ((event.target as HTMLElement).closest("button, a")) return;
-          onOpen();
+          if ((event.target as HTMLElement).closest("button, a, input")) return;
+          activate();
         },
         onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
           if (event.target !== event.currentTarget) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            onOpen();
+            activate();
           }
         },
       }
     : {};
+
+  const selectBox = selectable ? (
+    <input
+      type="checkbox"
+      checked={selected}
+      onChange={() => onToggleSelect?.()}
+      aria-label={`${t("select")} ${sub.name}`}
+      className="h-4 w-4 shrink-0 cursor-pointer accent-primary"
+    />
+  ) : null;
 
   if (layout === "list") {
     return (
@@ -282,11 +301,13 @@ export function SubscriptionCard({
         {...openProps}
         className={cn(
           "group flex flex-col gap-3 rounded-xl border bg-card/60 p-3 backdrop-blur-sm transition-colors hover:bg-card sm:flex-row sm:items-center",
-          onOpen && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          activate && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          selected && "ring-2 ring-primary",
           sub.inactive && "opacity-60 grayscale-[0.3]",
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
+          {selectBox}
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-background font-bold shadow-sm">
             <SubscriptionLogo sub={sub} imgClassName="rounded-xl object-contain p-1" />
           </div>
@@ -371,10 +392,12 @@ export function SubscriptionCard({
       {...openProps}
       className={cn(
         "group relative rounded-2xl border bg-card/60 backdrop-blur-sm p-5 transition-all duration-300 hover:shadow-lg hover:bg-card hover:-translate-y-1 flex flex-col justify-between overflow-hidden",
-        onOpen && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        activate && "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        selected && "ring-2 ring-primary",
         sub.inactive && "opacity-60 grayscale-[0.3]",
       )}
     >
+      {selectBox && <div className="absolute left-2 top-2 z-10 flex">{selectBox}</div>}
       <div className="absolute -z-10 bg-gradient-to-br from-primary/5 to-transparent w-full h-full top-0 left-0 transition-opacity opacity-0 group-hover:opacity-100" />
 
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">

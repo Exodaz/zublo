@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { queryKeys } from "@/lib/queryKeys";
 import { createQueryClientWrapper } from "@/test/query-client";
@@ -200,13 +200,18 @@ vi.mock("@/components/subscriptions/SubscriptionsToolbar", () => ({
     onToggleFilters,
     onCycleSort,
     onViewChange,
+    onToggleSelecting,
   }: {
     onSearchChange: (value: string) => void;
     onToggleFilters: () => void;
     onCycleSort: () => void;
     onViewChange: (view: "grid" | "list") => void;
+    onToggleSelecting: () => void;
   }) => (
     <div>
+      <button type="button" onClick={onToggleSelecting}>
+        select
+      </button>
       <button type="button" onClick={() => onSearchChange("netflix")}>
         change-search
       </button>
@@ -240,6 +245,9 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onOpen,
     membersBySubscription,
     groupByService,
+    selectable,
+    selectedIds,
+    onToggleSelect,
   }: {
     subscriptions: Array<{ id: string; name: string }>;
     layout: "grid" | "list";
@@ -252,8 +260,16 @@ vi.mock("@/components/subscriptions/SubscriptionsGrid", () => ({
     onOpen: (subscription: { id: string; name: string }) => void;
     membersBySubscription: Record<string, unknown[]>;
     groupByService: boolean;
+    selectable: boolean;
+    selectedIds: Set<string>;
+    onToggleSelect: (id: string) => void;
   }) => (
     <div>
+      <div>selectable:{String(selectable)}</div>
+      <div>selected:{[...selectedIds].join(",")}</div>
+      <button type="button" onClick={() => onToggleSelect(subscriptions[0].id)}>
+        toggle-first
+      </button>
       <div>grid:{subscriptions.length}</div>
       <div>grid-names:{subscriptions.map((s) => s.name).join(",")}</div>
       <div>grouped:{String(groupByService)}</div>
@@ -627,6 +643,27 @@ describe("SubscriptionsPage", () => {
       expect(mocks.toastSuccess).toHaveBeenCalledWith('import_partial:{"imported":1,"skipped":1}');
     });
 
+    // Updates are reported next to created records, with skips and member changes.
+    mocks.importSubscriptions.mockResolvedValueOnce({
+      imported: 1,
+      updated: 2,
+      skipped: 1,
+      members_imported: 1,
+      members_updated: 4,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "import-obj-subs" }));
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        'import_result:{"created":1,"updated":2} · import_skipped:{"count":1} · import_members_result:{"added":1,"updated":4}',
+      );
+    });
+
+    mocks.importSubscriptions.mockResolvedValueOnce({ imported: 0, updated: 3, skipped: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "import-obj-subs" }));
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('import_result:{"created":0,"updated":3}');
+    });
+
     // Imported members are mentioned alongside the subscription count.
     mocks.importSubscriptions.mockResolvedValueOnce({ imported: 1, skipped: 0, members_imported: 5 });
     fireEvent.click(screen.getByRole("button", { name: "import-obj-subs" }));
@@ -818,6 +855,123 @@ describe("SubscriptionsPage", () => {
       render(<SubscriptionsPage />, { wrapper: Wrapper });
       await waitFor(() => screen.getByText("grid:0"));
       expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("select mode", () => {
+    beforeEach(() => {
+      mocks.listSubscriptions.mockResolvedValue([
+        { id: "sub-1", name: "Netflix" },
+        { id: "sub-2", name: "Spotify" },
+        { id: "sub-3", name: "Disney" },
+      ]);
+    });
+
+    it("selects, clears, selects all and exits", async () => {
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+      expect(screen.getByText("selectable:false")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      expect(screen.getByText("selectable:true")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      expect(screen.getByText("selected:sub-1")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      expect(screen.getByText("selected:")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "select_all" }));
+      expect(screen.getByText("selected:sub-1,sub-2,sub-3")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "clear_selection" }));
+      expect(screen.getByText("selected:")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      fireEvent.click(screen.getByRole("button", { name: "close" }));
+      expect(screen.getByText("selectable:false")).toBeInTheDocument();
+      expect(screen.getByText("selected:")).toBeInTheDocument();
+
+      // The toolbar button also leaves select mode.
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      expect(screen.getByText("selectable:false")).toBeInTheDocument();
+    });
+
+    it("deletes the selection after confirmation and reports failures", async () => {
+      mocks.deleteSubscription.mockImplementation((id: string) =>
+        id === "sub-2" ? Promise.reject(new Error("nope")) : Promise.resolve(undefined),
+      );
+      const { client, Wrapper } = createQueryClientWrapper();
+      const invalidate = vi.spyOn(client, "invalidateQueries");
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "select_all" }));
+      fireEvent.click(screen.getByRole("button", { name: /delete_selected/ }));
+
+      // Dismissing keeps the selection; confirming deletes it.
+      fireEvent.click(screen.getByRole("button", { name: "close-delete" }));
+      expect(screen.queryByRole("button", { name: "confirm-delete" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /delete_selected/ }));
+      fireEvent.click(screen.getByRole("button", { name: "confirm-delete" }));
+
+      await waitFor(() =>
+        expect(mocks.toastSuccess).toHaveBeenCalledWith('deleted_count:{"count":2}'),
+      );
+      expect(mocks.toastError).toHaveBeenCalledWith('delete_failed_count:{"count":1}');
+      expect(mocks.deleteSubscription).toHaveBeenCalledTimes(3);
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.subscriptions.members("user-1") });
+      expect(screen.getByText("selectable:false")).toBeInTheDocument();
+    });
+
+    it("reports only successes when every delete works", async () => {
+      mocks.deleteSubscription.mockResolvedValue(undefined);
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      fireEvent.click(screen.getByRole("button", { name: /delete_selected/ }));
+      fireEvent.click(screen.getByRole("button", { name: "confirm-delete" }));
+
+      await waitFor(() =>
+        expect(mocks.toastSuccess).toHaveBeenCalledWith('deleted_count:{"count":1}'),
+      );
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+
+    it("only reports failures when nothing could be deleted", async () => {
+      mocks.deleteSubscription.mockRejectedValue(new Error("nope"));
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      fireEvent.click(screen.getByRole("button", { name: /delete_selected/ }));
+      fireEvent.click(screen.getByRole("button", { name: "confirm-delete" }));
+
+      await waitFor(() =>
+        expect(mocks.toastError).toHaveBeenCalledWith('delete_failed_count:{"count":1}'),
+      );
+      expect(mocks.toastSuccess).not.toHaveBeenCalledWith(expect.stringContaining("deleted_count"));
+    });
+
+    it("drops selected ids that no longer exist", async () => {
+      const { client, Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "select_all" }));
+      mocks.listSubscriptions.mockResolvedValue([{ id: "sub-3", name: "Disney" }]);
+      await act(async () => {
+        await client.invalidateQueries({ queryKey: queryKeys.subscriptions.all("user-1") });
+      });
+      await waitFor(() => screen.getByText("grid:1"));
+      expect(screen.getByText("selected:sub-3")).toBeInTheDocument();
     });
   });
 

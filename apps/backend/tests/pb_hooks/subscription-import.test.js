@@ -99,3 +99,22 @@ describe("normalizeImportedMembers", () => {
     expect(normalizeImportedMembers({ name: "x" })).toEqual([]);
   });
 });
+
+describe("memberMatchKey", () => {
+  const { memberMatchKey } = subscriptionImport;
+
+  it("matches by email, ignoring case and spaces", () => {
+    expect(memberMatchKey({ name: "Alice", email: " Alice@X.com " })).toBe("email:alice@x.com");
+    expect(memberMatchKey({ name: "Someone else", email: "alice@x.com" })).toBe("email:alice@x.com");
+  });
+
+  it("falls back to the name without an email", () => {
+    expect(memberMatchKey({ name: " Bob ", email: "" })).toBe("name:bob");
+    expect(memberMatchKey({ name: "Bob" })).toBe("name:bob");
+  });
+
+  it("tolerates missing input", () => {
+    expect(memberMatchKey(undefined)).toBe("name:");
+    expect(memberMatchKey({})).toBe("name:");
+  });
+});

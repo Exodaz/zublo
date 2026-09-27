@@ -216,4 +216,28 @@ describe("SubscriptionsGrid", () => {
     );
     expect(screen.getByRole("region", { name: "Netflix" })).toBeInTheDocument();
   });
+
+  it("passes selection state and toggles by id in select mode", () => {
+    const onToggleSelect = vi.fn();
+    render(
+      <SubscriptionsGrid
+        isLoading={false}
+        subscriptions={[getSub(), getSub({ id: "sub-2", name: "Spotify" })]}
+        selectable
+        selectedIds={new Set(["sub-2"])}
+        onToggleSelect={onToggleSelect}
+        {...baseHandlers}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: "select Netflix" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "select Spotify" })).toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox", { name: "select Netflix" }));
+    expect(onToggleSelect).toHaveBeenCalledWith("sub-1");
+  });
+
+  it("shows unchecked boxes when no selection set is given", () => {
+    render(<SubscriptionsGrid isLoading={false} subscriptions={[getSub()]} selectable {...baseHandlers} />);
+    expect(screen.getByRole("checkbox", { name: "select Netflix" })).not.toBeChecked();
+  });
 });

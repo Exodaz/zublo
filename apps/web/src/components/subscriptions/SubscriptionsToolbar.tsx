@@ -1,4 +1,4 @@
-import { ArrowUpDown, Filter, LayoutGrid, List, Search } from "lucide-react";
+import { ArrowUpDown, CheckSquare, Filter, LayoutGrid, List, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ interface SubscriptionsToolbarProps {
   onToggleFilters: () => void;
   onCycleSort: () => void;
   onViewChange: (view: "grid" | "list") => void;
+  /** Select mode for bulk actions; the button is hidden without a handler. */
+  selecting?: boolean;
+  onToggleSelecting?: () => void;
 }
 
 export function SubscriptionsToolbar({
@@ -23,6 +26,8 @@ export function SubscriptionsToolbar({
   onToggleFilters,
   onCycleSort,
   onViewChange,
+  selecting = false,
+  onToggleSelecting,
 }: SubscriptionsToolbarProps) {
   const { t } = useTranslation();
 
@@ -77,6 +82,23 @@ export function SubscriptionsToolbar({
           />
           <span className="hidden sm:inline">{t("filter")}</span>
         </Button>
+
+        {onToggleSelecting ? (
+          <Button
+            variant="outline"
+            aria-pressed={selecting}
+            className={cn(
+              "h-11 gap-2 border-transparent bg-background/50 px-4 hover:bg-accent/50",
+              selecting && "border-border bg-accent/80",
+            )}
+            onClick={onToggleSelecting}
+          >
+            <CheckSquare
+              className={cn("h-4 w-4", selecting ? "text-primary" : "text-muted-foreground")}
+            />
+            <span className="hidden sm:inline">{t("select")}</span>
+          </Button>
+        ) : null}
 
         <Button
           variant="outline"

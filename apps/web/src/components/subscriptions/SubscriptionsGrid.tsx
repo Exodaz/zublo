@@ -66,6 +66,10 @@ interface SubscriptionsGridProps {
   membersBySubscription?: Record<string, SubscriptionMember[]>;
   /** Show a header per service with its subscriptions underneath. */
   groupByService?: boolean;
+  /** Select mode for bulk actions. */
+  selectable?: boolean;
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 export function SubscriptionsGrid({
@@ -85,6 +89,9 @@ export function SubscriptionsGrid({
   onOpen,
   membersBySubscription = {},
   groupByService: grouped = false,
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
 }: SubscriptionsGridProps) {
   const { t } = useTranslation();
 
@@ -117,6 +124,9 @@ export function SubscriptionsGrid({
           onDelete={() => onDelete(subscription.id)}
           onOpen={onOpen ? () => onOpen(subscription) : undefined}
           members={membersBySubscription[subscription.id]}
+          selectable={selectable}
+          selected={selectedIds?.has(subscription.id) ?? false}
+          onToggleSelect={onToggleSelect ? () => onToggleSelect(subscription.id) : undefined}
         />
     ));
 

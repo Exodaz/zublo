@@ -14,6 +14,7 @@ import {
   type SubscriptionSortKey,
 } from "@/components/subscriptions/subscriptionsPage.types";
 import { SubscriptionsPageHeader } from "@/components/subscriptions/SubscriptionsPageHeader";
+import { SubscriptionsSelectionBar } from "@/components/subscriptions/SubscriptionsSelectionBar";
 import { SubscriptionsServiceTabs } from "@/components/subscriptions/SubscriptionsServiceTabs";
 import { SubscriptionsToolbar } from "@/components/subscriptions/SubscriptionsToolbar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -53,6 +54,10 @@ export function SubscriptionsPage() {
   const [membersSubscription, setMembersSubscription] = useState<Subscription | null>(null);
   const [detailSubscription, setDetailSubscription] = useState<Subscription | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [serviceFilter, setServiceFilter] = useState<string | null>(null);
@@ -173,6 +178,40 @@ export function SubscriptionsPage() {
       ? filteredSubscriptions
       : filteredSubscriptions.filter((sub) => serviceKeyOf(sub) === serviceFilter);
 
+  // ── Select mode ──────────────────────────────────────────────────────────────
+  // Only ids that still exist count, so deleted or re-fetched records drop out.
+  const liveSelection = new Set(
+    [...selectedIds].filter((id) => subscriptions.some((sub) => sub.id === id)),
+  );
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelecting = () => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  const deleteSelected = async () => {
+    const ids = [...liveSelection];
+    setConfirmBulkDelete(false);
+    setBulkDeleting(true);
+    const outcomes = await Promise.allSettled(ids.map((id) => subscriptionsService.delete(id)));
+    const failed = outcomes.filter((outcome) => outcome.status === "rejected").length;
+    setBulkDeleting(false);
+    queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all(userId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.members(userId) });
+    if (ids.length - failed > 0) toast.success(t("deleted_count", { count: ids.length - failed }));
+    if (failed > 0) toast.error(t("delete_failed_count", { count: failed }));
+    exitSelecting();
+  };
+
   const handleExport = async (format: "json" | "xlsx") => {
     try {
       const data = await subscriptionsService.export();
@@ -231,12 +270,25 @@ export function SubscriptionsPage() {
         queryKey: queryKeys.subscriptions.members(userId),
       });
 
-      const summary =
-        result.skipped > 0
-          ? t("import_partial", { imported: result.imported, skipped: result.skipped })
-          : t("import_success", { count: result.imported });
-      const members = result.members_imported ?? 0;
-      toast.success(members > 0 ? `${summary} · ${t("import_members", { count: members })}` : summary);
+      const updated = result.updated ?? 0;
+      const parts = [
+        updated > 0
+          ? t("import_result", { created: result.imported, updated })
+          : result.skipped > 0
+            ? t("import_partial", { imported: result.imported, skipped: result.skipped })
+            : t("import_success", { count: result.imported }),
+      ];
+      if (updated > 0 && result.skipped > 0) {
+        parts.push(t("import_skipped", { count: result.skipped }));
+      }
+      const membersAdded = result.members_imported ?? 0;
+      const membersUpdated = result.members_updated ?? 0;
+      if (membersUpdated > 0) {
+        parts.push(t("import_members_result", { added: membersAdded, updated: membersUpdated }));
+      } else if (membersAdded > 0) {
+        parts.push(t("import_members", { count: membersAdded }));
+      }
+      toast.success(parts.join(" · "));
     } catch {
       toast.error(t("import_error"));
     } finally {
@@ -276,7 +328,21 @@ export function SubscriptionsPage() {
         onToggleFilters={() => setShowFilters((current) => !current)}
         onCycleSort={handleCycleSort}
         onViewChange={setView}
+        selecting={selecting}
+        onToggleSelecting={() => (selecting ? exitSelecting() : setSelecting(true))}
       />
+
+      {selecting ? (
+        <SubscriptionsSelectionBar
+          selectedCount={liveSelection.size}
+          visibleCount={visibleSubscriptions.length}
+          deleting={bulkDeleting}
+          onSelectAll={() => setSelectedIds(new Set(visibleSubscriptions.map((sub) => sub.id)))}
+          onClear={() => setSelectedIds(new Set())}
+          onDelete={() => setConfirmBulkDelete(true)}
+          onClose={exitSelecting}
+        />
+      ) : null}
 
       {serviceGroups.length > 0 ? (
         <SubscriptionsServiceTabs
@@ -301,6 +367,9 @@ export function SubscriptionsPage() {
         isLoading={isLoading}
         subscriptions={visibleSubscriptions}
         groupByService={groupedByService}
+        selectable={selecting}
+        selectedIds={liveSelection}
+        onToggleSelect={toggleSelected}
         layout={view}
         mainCurrency={mainCurrency}
         convertCurrency={user?.convert_currency}
@@ -371,6 +440,14 @@ export function SubscriptionsPage() {
           onClose={() => setMembersSubscription(null)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        onOpenChange={(nextOpen) => !nextOpen && setConfirmBulkDelete(false)}
+        title={t("delete_selected_title")}
+        description={t("confirm_delete_selected", { count: liveSelection.size })}
+        onConfirm={() => void deleteSelected()}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

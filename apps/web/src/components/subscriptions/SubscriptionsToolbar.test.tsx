@@ -67,4 +67,39 @@ describe("SubscriptionsToolbar", () => {
     const filterIcon = container.querySelector(".text-primary");
     expect(filterIcon).toBeInTheDocument();
   });
+
+  it("toggles select mode when a handler is given", () => {
+    const onToggleSelecting = vi.fn();
+    const { rerender } = render(
+      <SubscriptionsToolbar
+        searchTerm=""
+        showFilters={false}
+        view="grid"
+        onSearchChange={vi.fn()}
+        onToggleFilters={vi.fn()}
+        onCycleSort={vi.fn()}
+        onViewChange={vi.fn()}
+        selecting
+        onToggleSelecting={onToggleSelecting}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "select" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(button);
+    expect(onToggleSelecting).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <SubscriptionsToolbar
+        searchTerm=""
+        showFilters={false}
+        view="grid"
+        onSearchChange={vi.fn()}
+        onToggleFilters={vi.fn()}
+        onCycleSort={vi.fn()}
+        onViewChange={vi.fn()}
+        onToggleSelecting={onToggleSelecting}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "select" })).toHaveAttribute("aria-pressed", "false");
+  });
 });

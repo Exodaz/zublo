@@ -765,4 +765,64 @@ describe("SubscriptionCard", () => {
       expect(screen.queryByRole("button", { name: /open_details/ })).not.toBeInTheDocument();
     });
   });
+
+  describe("select mode", () => {
+    const handlers = () => ({
+      onEdit: vi.fn(),
+      onClone: vi.fn(),
+      onRenew: vi.fn(),
+      onHistory: vi.fn(),
+      onMembers: vi.fn(),
+      onDelete: vi.fn(),
+    });
+
+    it.each(["grid", "list"] as const)("toggles selection instead of opening (%s)", (layout) => {
+      const onOpen = vi.fn();
+      const onToggleSelect = vi.fn();
+      const actions = handlers();
+      const { rerender } = render(
+        <SubscriptionCard
+          sub={getSubscription()}
+          layout={layout}
+          onOpen={onOpen}
+          selectable
+          onToggleSelect={onToggleSelect}
+          {...actions}
+        />,
+      );
+      const card = screen.getByRole("button", { name: "select: Netflix" });
+      expect(card).toHaveAttribute("aria-pressed", "false");
+
+      // Card body, checkbox and keyboard each toggle exactly once.
+      fireEvent.click(screen.getByText("Netflix"));
+      fireEvent.click(screen.getByRole("checkbox", { name: "select Netflix" }));
+      fireEvent.keyDown(card, { key: "Enter" });
+      expect(onToggleSelect).toHaveBeenCalledTimes(3);
+      expect(onOpen).not.toHaveBeenCalled();
+
+      // The card's own buttons still do their job without toggling.
+      fireEvent.click(screen.getByTitle("edit"));
+      expect(actions.onEdit).toHaveBeenCalledTimes(1);
+      expect(onToggleSelect).toHaveBeenCalledTimes(3);
+
+      rerender(
+        <SubscriptionCard
+          sub={getSubscription()}
+          layout={layout}
+          selectable
+          selected
+          onToggleSelect={onToggleSelect}
+          {...actions}
+        />,
+      );
+      expect(screen.getByRole("checkbox", { name: "select Netflix" })).toBeChecked();
+      expect(screen.getByRole("button", { name: "select: Netflix" })).toHaveClass("ring-2");
+    });
+
+    it("renders a checkbox that does nothing without a toggle handler", () => {
+      render(<SubscriptionCard sub={getSubscription()} selectable {...handlers()} />);
+      fireEvent.click(screen.getByRole("checkbox", { name: "select Netflix" }));
+      expect(screen.queryByRole("button", { name: /select:/ })).not.toBeInTheDocument();
+    });
+  });
 });

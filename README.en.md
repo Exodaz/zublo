@@ -137,7 +137,7 @@ This fork adapts Zublo to **shared and resold family plans**: Microsoft 365 Fami
 | 4 | [Services and brand logos](#4-services-and-brand-logos) | Subscription form | 0.7.0-family.1 |
 | 5 | [Payment account](#5-payment-account) | Subscription form | 0.7.0-family.1 |
 | 6 | [Subscription summary](#6-subscription-summary) | Click a card | 0.7.0-family.1 |
-| 7 | [Export and import](#7-export-and-import) | Subscriptions page | 0.7.0-family.2 |
+| 7 | [Export, import and multi-select delete](#7-export-and-import) | Subscriptions page | 0.7.0-family.2 / .6 |
 | 8 | [Frankfurter exchange rates](#8-frankfurter-exchange-rates) | Settings → Exchange Rate API | 0.7.0-family.3 |
 | 9 | [Service tabs and grouping](#9-service-tabs-and-grouping) | Top of the Subscriptions page | 0.7.0-family.4 |
 
@@ -232,13 +232,31 @@ Buttons lead to **History**, **Manage members** and **Edit**. The card's own but
 | Excel (.xlsx) | Two sheets: **Subscriptions**, and **Members** linked through `subscription_id` | ✓ edit in Excel, then import back |
 | Wallos JSON | Export from [Wallos](https://github.com/ellite/Wallos) | ✓ |
 
-How import handles your data:
+How import handles your data (from `0.7.0-family.6` it **updates existing data**):
 
-- It **adds records and never overwrites**, so importing the same file twice creates duplicates.
+- **Matching subscriptions:**
+  - by the file's `id` first, i.e. an export from the same instance
+  - otherwise by name, ignoring case
+  - otherwise a new subscription is created
+  - Re-importing the same file therefore never creates duplicates.
+- **Partial files are safe:** a column missing from the file keeps the stored value. A file with only `name` and `price` changes just the price. A present but empty value clears the field.
+- **Members are merged:**
+  - matched by email, else by name
+  - matched members get their amount, expiry date and notes updated, and new ones are added
+  - members missing from the file are **kept**
+  - rows without a members column leave members untouched
+- Price, cycle and currency changes are logged in History automatically.
+- The result toast reports added, updated and skipped subscriptions and added/updated members.
+- Wallos files are always added as new.
 - Categories, payment methods and payers are matched by name, and created if missing.
 - Currencies are matched by code. Unknown codes fall back to your main currency.
-- A toast reports imported subscriptions and members.
 - Older Zublo exports still import.
+
+**Deleting several subscriptions at once**
+
+1. Press **Select** in the toolbar.
+2. Tick subscriptions (or click their cards). **Select all** picks every visible subscription, respecting search, filters and the service tab. **Clear** unselects.
+3. Press **Delete selected** and confirm. Their members and history are deleted too.
 
 ### 8. Frankfurter exchange rates
 
@@ -279,6 +297,8 @@ How import handles your data:
 | `0.7.0-family.2` | Full export/import (members, Excel) and a fix for imports dropping the start date | No |
 | `0.7.0-family.3` | Frankfurter exchange rates | Yes (adds the `frankfurter` option) |
 | `0.7.0-family.4` | Service tabs and group-by-service view | No |
+| `0.7.0-family.5` | App Store Credit payment method with the App Store logo | Yes (adds App Store Credit for existing users) |
+| `0.7.0-family.6` | Import updates existing data (match by id/name, members and expiry dates merged) and multi-select delete | No |
 
 Migrations run automatically on start and keep existing data.
 

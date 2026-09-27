@@ -90,7 +90,18 @@ function normalizeImportedMembers(raw) {
   return members;
 }
 
+/**
+ * Identity of a member when merging an import into existing members: the
+ * email (case-insensitive) when there is one, otherwise the name.
+ */
+function memberMatchKey(member) {
+  var email = String((member && member.email) || "").trim().toLowerCase();
+  if (email) return "email:" + email;
+  return "name:" + String((member && member.name) || "").trim().toLowerCase();
+}
+
 module.exports = {
+  memberMatchKey,
   detectWallosFormat,
   parseCycleAndFrequency,
   parseWallosPrice,

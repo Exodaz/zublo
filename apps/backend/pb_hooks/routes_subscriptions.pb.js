@@ -137,7 +137,34 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
   const mainCurrencyId = getUserMainCurrency();
   const subsCol = $app.findCollectionByNameOrId("subscriptions");
   const membersCol = $app.findCollectionByNameOrId("subscription_members");
-  const results = { imported: 0, skipped: 0, members_imported: 0, errors: [] };
+  const results = {
+    imported: 0,
+    updated: 0,
+    skipped: 0,
+    members_imported: 0,
+    members_updated: 0,
+    errors: [],
+  };
+
+  // Own-format rows update an existing subscription instead of duplicating
+  // it: matched by the exported id (only the caller's own records), else by
+  // name ignoring case. Wallos rows are always created.
+  function findExisting(row) {
+    if (isWallos) return null;
+    const id = String(row.id || "").trim();
+    if (id) {
+      try {
+        const byId = $app.findRecordById("subscriptions", id);
+        if (byId.getString("user") === userId) return byId;
+      } catch (_) {}
+    }
+    const name = String(row.name || "").trim().toLowerCase();
+    if (!name) return null;
+    const byName = $app.findRecordsByFilter(
+      "subscriptions", "user = {:u} && name:lower = {:n}", "", 1, 0, { u: userId, n: name }
+    );
+    return byName.length > 0 ? byName[0] : null;
+  }
 
   for (let i = 0; i < data.subscriptions.length; i++) {
     const sub = data.subscriptions[i];
@@ -148,6 +175,22 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       let categoryId, paymentMethodId, payerId;
       let autoMarkPaid = false, brandDomain = "", paymentAccount = "", members = [];
       let startDate = "";
+      let hasMembers = false;
+
+      const existing = findExisting(sub);
+      // A key missing from the row keeps the stored value, so a partial file
+      // (e.g. only name + price) never wipes the rest of a subscription.
+      const has = (key) => Object.prototype.hasOwnProperty.call(sub, key);
+      // Stored numbers/bools come back as-is; dates and text as strings, the
+      // same shape an exported file carries.
+      const NATIVE = { price: 1, frequency: 1, notify_days_before: 1, payment_limit: 1,
+        payments_completed: 1, auto_renew: 1, inactive: 1, notify: 1, auto_mark_paid: 1 };
+      const val = (key) => {
+        if (!existing || has(key)) return sub[key];
+        return NATIVE[key] ? existing.get(key) : existing.getString(key);
+      };
+      const relation = (key, resolve) =>
+        existing && !has(key) ? existing.getString(key) : resolve(sub[key]);
 
       if (isWallos) {
         // ── Wallos format ──
@@ -181,23 +224,23 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
 
       } else {
         // ── Own export format ──
-        name = (sub.name || "").trim();
-        price = parseFloat(sub.price) || 0;
-        notes = sub.notes || "";
-        url = sub.url || "";
-        nextPayment = sub.next_payment || new Date().toISOString().split("T")[0];
-        autoRenew = !!sub.auto_renew;
-        inactive = !!sub.inactive;
-        notify = !!sub.notify;
+        name = String(val("name") || "").trim();
+        price = parseFloat(val("price")) || 0;
+        notes = val("notes") || "";
+        url = val("url") || "";
+        nextPayment = val("next_payment") || new Date().toISOString().split("T")[0];
+        autoRenew = !!val("auto_renew");
+        inactive = !!val("inactive");
+        notify = !!val("notify");
         // 0 ("on the day") is a valid choice, so only a missing value defaults.
-        const daysBefore = parseInt(sub.notify_days_before, 10);
+        const daysBefore = parseInt(val("notify_days_before"), 10);
         notifyDaysBefore = isFinite(daysBefore) && daysBefore >= 0 ? daysBefore : 3;
-        startDate = importParsers.normalizeImportDate(sub.start_date);
-        cancellationDate = sub.cancellation_date || "";
-        endDate = sub.end_date || "";
-        paymentLimit = Math.max(0, parseInt(sub.payment_limit) || 0);
-        paymentsCompleted = Math.max(0, parseInt(sub.payments_completed) || 0);
-        recordType = recordTypes.normalizeRecordType(sub.record_type);
+        startDate = importParsers.normalizeImportDate(val("start_date"));
+        cancellationDate = importParsers.normalizeImportDate(val("cancellation_date"));
+        endDate = importParsers.normalizeImportDate(val("end_date"));
+        paymentLimit = Math.max(0, parseInt(val("payment_limit")) || 0);
+        paymentsCompleted = Math.max(0, parseInt(val("payments_completed")) || 0);
+        recordType = recordTypes.normalizeRecordType(val("record_type"));
         if (recordType === "expense" && paymentLimit > 0) {
           endDate = "";
           paymentsCompleted = Math.min(paymentsCompleted, paymentLimit);
@@ -207,20 +250,21 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
           autoRenew = true;
         }
 
-        currencyId = (sub.currency ? findCurrencyByCode(sub.currency) : "") || mainCurrencyId;
-        cycleId = findCycleByName(
-          sub.cycle || (recordType === "credit" ? recordTypes.ONE_TIME_CYCLE : "Monthly")
+        currencyId = relation("currency", (code) => (code ? findCurrencyByCode(code) : "")) || mainCurrencyId;
+        cycleId = relation("cycle", (cycleName) =>
+          findCycleByName(cycleName || (recordType === "credit" ? recordTypes.ONE_TIME_CYCLE : "Monthly"))
         );
-        frequency = parseInt(sub.frequency) || 1;
+        frequency = parseInt(val("frequency")) || 1;
 
-        categoryId = findOrCreateCategory(sub.category);
-        paymentMethodId = findOrCreatePaymentMethod(sub.payment_method);
-        payerId = findOrCreatePayer(sub.payer);
+        categoryId = relation("category", findOrCreateCategory);
+        paymentMethodId = relation("payment_method", findOrCreatePaymentMethod);
+        payerId = relation("payer", findOrCreatePayer);
 
         // Fields added after the first export format; absent in older files.
-        autoMarkPaid = !!sub.auto_mark_paid;
-        brandDomain = brandLogo.normalizeBrandDomain(sub.brand_domain);
-        paymentAccount = String(sub.payment_account || "").trim().slice(0, 255);
+        autoMarkPaid = !!val("auto_mark_paid");
+        brandDomain = brandLogo.normalizeBrandDomain(val("brand_domain"));
+        paymentAccount = String(val("payment_account") || "").trim().slice(0, 255);
+        hasMembers = has("members");
         members = importParsers.normalizeImportedMembers(sub.members);
       }
 
@@ -239,7 +283,7 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
         cycleId = findCycleByName("Monthly");
       }
 
-      const rec = new Record(subsCol);
+      const rec = existing || new Record(subsCol);
       rec.set("user", userId);
       rec.set("name", name);
       rec.set("price", price);
@@ -257,13 +301,14 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       rec.set("brand_domain", brandDomain);
       rec.set("payment_account", paymentAccount);
       if (startDate) rec.set("start_date", startDate);
-      if (cancellationDate) rec.set("cancellation_date", cancellationDate);
-      if (endDate) rec.set("end_date", endDate);
+      // Empty values clear optional fields on update; on create they are unset anyway.
+      rec.set("cancellation_date", cancellationDate);
+      rec.set("end_date", endDate);
       if (currencyId) rec.set("currency", currencyId);
       if (cycleId) rec.set("cycle", cycleId);
-      if (categoryId) rec.set("category", categoryId);
-      if (paymentMethodId) rec.set("payment_method", paymentMethodId);
-      if (payerId) rec.set("payer", payerId);
+      rec.set("category", categoryId || "");
+      rec.set("payment_method", paymentMethodId || "");
+      rec.set("payer", payerId || "");
 
       const policyError = recordTypeHelpers.applyRecordTypeToRecord($app, rec, recordType);
       if (policyError) {
@@ -273,20 +318,43 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       }
 
       $app.save(rec);
-      results.imported++;
+      if (existing) results.updated++;
+      else results.imported++;
+
+      if (!hasMembers) continue;
+
+      // Merge members: matched by email (else name) are updated, new ones are
+      // added, and members missing from the file are left alone.
+      const current = {};
+      if (existing) {
+        for (const m of $app.findRecordsByFilter(
+          "subscription_members", "subscription = {:s}", "", 0, 0, { s: rec.id }
+        )) {
+          current[importParsers.memberMatchKey({
+            name: m.getString("name"),
+            email: m.getString("email"),
+          })] = m;
+        }
+      }
 
       for (const member of members) {
         try {
-          const m = new Record(membersCol);
+          const key = importParsers.memberMatchKey(member);
+          const m = current[key] || new Record(membersCol);
           m.set("subscription", rec.id);
           m.set("user", userId);
           m.set("name", member.name);
           m.set("email", member.email);
           m.set("amount", member.amount);
-          if (member.expires_at) m.set("expires_at", member.expires_at);
+          m.set("expires_at", member.expires_at);
           m.set("notes", member.notes);
           $app.save(m);
-          results.members_imported++;
+          if (current[key]) {
+            results.members_updated++;
+          } else {
+            results.members_imported++;
+            current[key] = m;
+          }
         } catch (err) {
           results.errors.push({
             index: i,

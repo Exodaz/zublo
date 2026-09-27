@@ -763,5 +763,17 @@
   "services": "Services",
   "other_services": "Other",
   "group_by_service": "Group by service",
-  "service_group_summary": "{{count}} subscription(s) · {{total}}/year"
+  "service_group_summary": "{{count}} subscription(s) · {{total}}/year",
+  "import_result": "{{created}} added, {{updated}} updated",
+  "import_skipped": "{{count}} skipped",
+  "import_members_result": "members: {{added}} added, {{updated}} updated",
+  "select": "Select",
+  "selected_count": "{{count}} selected",
+  "select_all": "Select all",
+  "clear_selection": "Clear",
+  "delete_selected": "Delete selected",
+  "delete_selected_title": "Delete selected subscriptions",
+  "confirm_delete_selected": "Delete {{count}} subscription(s)? Their members and history are deleted too.",
+  "deleted_count": "Deleted {{count}} subscription(s)",
+  "delete_failed_count": "{{count}} could not be deleted"
 }

@@ -49,9 +49,13 @@ export const subscriptionsService = {
 
   import: (subscriptions: unknown[]) =>
     api.post<{
+      /** Newly created subscriptions. */
       imported: number;
+      /** Existing subscriptions matched by id or name and updated. */
+      updated?: number;
       skipped: number;
       members_imported?: number;
+      members_updated?: number;
       errors: { index: number; name?: string; reason?: string; warning?: string }[];
     }>(
       "/api/subscriptions/import",
