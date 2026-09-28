@@ -301,6 +301,7 @@ How import handles your data (from `0.7.0-family.6` it **updates existing data**
 | `0.7.0-family.6` | Import updates existing data (match by id/name, members and expiry dates merged) and multi-select delete | No |
 | `0.7.0-family.7` | Calendar summary of member expiries and renewal amounts for the month | No |
 | `0.7.1` | Dates shown as DD-MM-YY across the app (image tags `0.7.1`, `0.7`, `latest`) | No |
+| `0.7.2` | Date fields entered as DD/MM/YYYY everywhere (member expiry, subscription form dates) with a calendar picker | No |
 
 Migrations run automatically on start and keep existing data.
 

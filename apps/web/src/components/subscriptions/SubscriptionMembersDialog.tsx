@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Dialog,
   DialogContent,
@@ -162,12 +163,7 @@ function MemberForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="member-expires">{t("member_expires_at")}</Label>
-          <Input
-            id="member-expires"
-            type="date"
-            value={form.expires_at}
-            onChange={(e) => set("expires_at")(e.target.value)}
-          />
+          <DateInput id="member-expires" value={form.expires_at} onChange={set("expires_at")} />
         </div>
       </div>
       <div className="space-y-1.5">

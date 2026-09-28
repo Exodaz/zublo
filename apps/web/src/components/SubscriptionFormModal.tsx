@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Dialog,
   DialogContent,
@@ -421,14 +422,36 @@ export function SubscriptionFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>{t(isCredit ? "received_on" : "next_payment")}</Label>
-              <Input type="date" {...register("next_payment")} />
+              <Controller
+                name="next_payment"
+                control={control}
+                render={({ field }) => (
+                  <DateInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
               {errors.next_payment && (
                 <p className="text-sm text-destructive">{errors.next_payment.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label>{t("start_date")}</Label>
-              <Input type="date" {...register("start_date")} />
+              <Controller
+                name="start_date"
+                control={control}
+                render={({ field }) => (
+                  <DateInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
             </div>
           </div>
 
@@ -459,7 +482,18 @@ export function SubscriptionFormModal({
               {watchedEndMode === "date" && (
                 <div className="space-y-2">
                   <Label>{t("end_date")}</Label>
-                  <Input type="date" {...register("end_date")} />
+                  <Controller
+                name="end_date"
+                control={control}
+                render={({ field }) => (
+                  <DateInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
                   {errors.end_date && (
                     <p className="text-sm text-destructive">{errors.end_date.message}</p>
                   )}
@@ -647,7 +681,18 @@ export function SubscriptionFormModal({
           {watchedInactive && !isCredit && (
             <div className="space-y-2">
               <Label>{t("cancellation_date")}</Label>
-              <Input type="date" {...register("cancellation_date")} />
+              <Controller
+                name="cancellation_date"
+                control={control}
+                render={({ field }) => (
+                  <DateInput
+                    name={field.name}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
             </div>
           )}
 

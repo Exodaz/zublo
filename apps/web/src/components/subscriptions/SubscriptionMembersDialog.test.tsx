@@ -199,7 +199,7 @@ describe("SubscriptionMembersDialog", () => {
     fill("name *", "  Grace  ");
     fill("email", " grace@example.com ");
     fill("member_amount", "12.5");
-    fill("member_expires_at", "2026-10-31");
+    fill("member_expires_at", "31/10/2026");
     fill("notes", " family ");
     expect(save).toBeEnabled();
     fireEvent.click(save);
@@ -225,12 +225,12 @@ describe("SubscriptionMembersDialog", () => {
     expect(screen.getByLabelText("name *")).toHaveValue("Alice");
     expect(screen.getByLabelText("email")).toHaveValue("alice@example.com");
     expect(screen.getByLabelText("member_amount")).toHaveValue(100);
-    expect(screen.getByLabelText("member_expires_at")).toHaveValue("2026-09-20");
+    expect(screen.getByLabelText("member_expires_at")).toHaveValue("20/09/2026");
     expect(screen.getByLabelText("notes")).toHaveValue("Paid by transfer");
     // The add button is hidden while a row is being edited.
     expect(screen.queryByRole("button", { name: /add_member/ })).not.toBeInTheDocument();
 
-    fill("member_expires_at", "2026-10-20");
+    fill("member_expires_at", "20/10/2026");
     fireEvent.click(screen.getByRole("button", { name: "save" }));
 
     await waitFor(() =>

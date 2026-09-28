@@ -779,5 +779,6 @@
   "members_expiring_month": "Members expiring this month",
   "members_upcoming_hint": "{{count}} still to come",
   "renewal_amount_month": "Renewals this month",
-  "renewal_upcoming_hint": "{{amount}} still to come"
+  "renewal_upcoming_hint": "{{amount}} still to come",
+  "open_calendar": "Open calendar"
 }
