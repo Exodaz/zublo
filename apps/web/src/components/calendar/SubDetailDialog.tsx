@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { isCredit } from "@/lib/recordTypes";
-import { daysUntil, formatDate, formatPrice, sanitizeHref } from "@/lib/utils";
+import { daysUntil, formatDate, formatDateValue, formatPrice, sanitizeHref } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { paymentRecordsService } from "@/services/paymentRecords";
 import type { Currency, PaymentRecord, Subscription } from "@/types";
@@ -154,7 +154,7 @@ export function SubDetailDialog({
                     <p className="font-semibold text-green-700 dark:text-green-400">{t("paid")}</p>
                     {paymentRecord?.paid_at && (
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {new Date(paymentRecord.paid_at).toLocaleDateString()}
+                        {formatDateValue(new Date(paymentRecord.paid_at))}
                         {paymentRecord.amount != null &&
                           ` · ${formatPrice(paymentRecord.amount, cur?.symbol ?? "$", {
                             currencyCode: cur?.code,

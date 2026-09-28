@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { isCredit } from "@/lib/recordTypes";
-import { formatPrice } from "@/lib/utils";
+import { formatDateValue, formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Currency, PaymentRecord } from "@/types";
 
@@ -56,12 +56,8 @@ export function DayPanel({
   onSelectMemberExpiry,
   onClose,
 }: DayPanelProps) {
-  const dateLabel = new Date(year, month - 1, day).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const labelDate = new Date(year, month - 1, day);
+  const dateLabel = `${labelDate.toLocaleDateString("en-US", { weekday: "long" })}, ${formatDateValue(labelDate)}`;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const thisDay = new Date(year, month - 1, day);
   const isToday = thisDay.getTime() === today.getTime();

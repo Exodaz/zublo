@@ -110,20 +110,20 @@ export function toMonthly(price: number, cycleName: string, frequency: number): 
   }
 }
 
+/** A Date as DD-MM-YY (e.g. 22-01-27), the app-wide display format; "" when invalid. */
+export function formatDateValue(date: Date): string {
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${pad(date.getFullYear() % 100)}`;
+}
+
 /**
- * Format a date string as localized short date.
+ * A stored date ("YYYY-MM-DD", optionally with a time part) as DD-MM-YY on its
+ * calendar day. Unparseable input is returned unchanged.
  */
-export function formatDate(dateStr: string, locale = "en-US"): string {
+export function formatDate(dateStr: string): string {
   if (!dateStr) return "";
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(parseLocalDate(dateStr));
-  } catch {
-    return dateStr;
-  }
+  return formatDateValue(parseLocalDate(dateStr)) || dateStr;
 }
 
 /** Parse a "YYYY-MM-DD" string as local midnight (avoids UTC shift). */

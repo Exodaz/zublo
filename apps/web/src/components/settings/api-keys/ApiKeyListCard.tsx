@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { PermissionBadge } from "@/components/settings/api-keys/PermissionBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatDateValue } from "@/lib/utils";
 import type { ApiKey } from "@/types";
 
 function KeyRowSkeleton() {
@@ -38,18 +39,10 @@ interface KeyRowProps {
 function KeyRow({ apiKey, onEdit, onDelete }: KeyRowProps) {
   const { t } = useTranslation();
 
-  const formattedDate = new Date(apiKey.created).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const formattedDate = formatDateValue(new Date(apiKey.created));
 
   const formattedLastUsed = apiKey.last_used_at
-    ? new Date(apiKey.last_used_at).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+    ? formatDateValue(new Date(apiKey.last_used_at))
     : t("api_key_never_used");
 
   return (

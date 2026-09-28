@@ -299,6 +299,8 @@ How import handles your data (from `0.7.0-family.6` it **updates existing data**
 | `0.7.0-family.4` | Service tabs and group-by-service view | No |
 | `0.7.0-family.5` | App Store Credit payment method with the App Store logo | Yes (adds App Store Credit for existing users) |
 | `0.7.0-family.6` | Import updates existing data (match by id/name, members and expiry dates merged) and multi-select delete | No |
+| `0.7.0-family.7` | Calendar summary of member expiries and renewal amounts for the month | No |
+| `0.7.1` | Dates shown as DD-MM-YY across the app (image tags `0.7.1`, `0.7`, `latest`) | No |
 
 Migrations run automatically on start and keep existing data.
 

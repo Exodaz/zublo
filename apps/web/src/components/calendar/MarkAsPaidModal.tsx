@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
-import { formatPrice } from "@/lib/utils";
+import { formatDateValue, formatPrice } from "@/lib/utils";
 import { paymentRecordsService } from "@/services/paymentRecords";
 import type { PaymentRecord, Subscription } from "@/types";
 
@@ -108,11 +108,7 @@ export function MarkAsPaidModal({
               </p>
               <p className="text-sm text-muted-foreground truncate mt-0.5">
                 {sub.name} ·{" "}
-                {date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {formatDateValue(date)}
               </p>
             </div>
 

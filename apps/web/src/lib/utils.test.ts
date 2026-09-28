@@ -11,6 +11,7 @@ import {
   cn,
   daysUntil,
   formatDate,
+  formatDateValue,
   formatPrice,
   getColorForSub,
   getCurrencyFractionDigits,
@@ -189,11 +190,13 @@ describe("toMonthly", () => {
 // formatDate
 // ---------------------------------------------------------------------------
 describe("formatDate", () => {
-  it("formats a YYYY-MM-DD string", () => {
-    const result = formatDate("2024-01-15", "en-US");
-    expect(result).toMatch(/Jan/);
-    expect(result).toMatch(/15/);
-    expect(result).toMatch(/2024/);
+  it("formats a YYYY-MM-DD string as DD-MM-YY", () => {
+    expect(formatDate("2024-01-15")).toBe("15-01-24");
+    expect(formatDate("2027-12-05")).toBe("05-12-27");
+  });
+
+  it("uses the calendar day of a stored datetime", () => {
+    expect(formatDate("2026-09-23 00:00:00.000Z")).toBe("23-09-26");
   });
 
   it("returns empty string for empty input", () => {
@@ -203,12 +206,16 @@ describe("formatDate", () => {
   it("returns the original string on parse failure", () => {
     expect(formatDate("not-a-date")).toBe("not-a-date");
   });
+});
 
-  it("respects locale (pt-BR shows day first)", () => {
-    const result = formatDate("2024-06-01", "pt-BR");
-    // pt-BR format: "1 de jun. de 2024"
-    expect(result).toContain("2024");
-    expect(result).toMatch(/1/);
+describe("formatDateValue", () => {
+  it("formats a Date as DD-MM-YY with padding", () => {
+    expect(formatDateValue(new Date(2026, 0, 2))).toBe("02-01-26");
+    expect(formatDateValue(new Date(2000, 10, 30))).toBe("30-11-00");
+  });
+
+  it("returns an empty string for an invalid date", () => {
+    expect(formatDateValue(new Date("nope"))).toBe("");
   });
 });
 
