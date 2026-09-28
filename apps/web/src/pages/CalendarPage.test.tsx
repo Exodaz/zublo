@@ -115,10 +115,17 @@ vi.mock("@/components/calendar/CalendarOverview", () => ({
   CalendarOverview: ({
     count,
     total,
+    memberStats,
   }: {
     count: number;
     total: number;
-  }) => <div>overview:{count}:{total}</div>,
+    memberStats?: { count: number };
+  }) => (
+    <div>
+      overview:{count}:{total}
+      <span>member-stats:{memberStats ? memberStats.count : "none"}</span>
+    </div>
+  ),
 }));
 
 vi.mock("@/components/calendar/CalendarMonthCard", () => ({
@@ -346,6 +353,7 @@ describe("CalendarPage", () => {
       },
       mainCurrency: { id: "cur-1", symbol: "$" },
       memberExpiriesByDay: {},
+      memberStats: { count: 2, total: 800, upcomingCount: 1, upcomingTotal: 400 },
       selectedMemberExpiries: [
         { member: { id: "m-1" }, sub: { id: "sub-1", name: "Netflix" } },
       ],
@@ -510,6 +518,8 @@ describe("CalendarPage", () => {
       ),
     );
 
+    await waitFor(() => expect(screen.getByText("member-stats:2")).toBeInTheDocument());
+
     fireEvent.click(screen.getByRole("button", { name: "select-day" }));
     expect(screen.getByText("member-expiries:1")).toBeInTheDocument();
 
@@ -557,5 +567,14 @@ describe("CalendarPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "next-month" }));
 
     vi.useRealTimers();
+  });
+
+  it("leaves out member stats for users without members", async () => {
+    mocks.user = { id: "user-1", budget: 100, payment_tracking: true };
+    mocks.listMembers.mockResolvedValue([]);
+    const { Wrapper } = createQueryClientWrapper();
+    render(<CalendarPage />, { wrapper: Wrapper });
+    await waitFor(() => expect(mocks.listMembers).toHaveBeenCalled());
+    expect(screen.getByText("member-stats:none")).toBeInTheDocument();
   });
 });

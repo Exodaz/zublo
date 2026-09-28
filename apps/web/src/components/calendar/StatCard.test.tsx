@@ -33,4 +33,14 @@ describe("StatCard", () => {
     expect(screen.queryByText("$120.00")).not.toBeInTheDocument();
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
   });
+
+  it("shows a hint under the value, but not while loading", () => {
+    const { rerender } = render(
+      <StatCard icon={null} iconClass="" label="Members" value="3" hint="2 still to come" loading={false} />,
+    );
+    expect(screen.getByText("2 still to come")).toBeInTheDocument();
+
+    rerender(<StatCard icon={null} iconClass="" label="Members" value="3" hint="2 still to come" loading />);
+    expect(screen.queryByText("2 still to come")).not.toBeInTheDocument();
+  });
 });

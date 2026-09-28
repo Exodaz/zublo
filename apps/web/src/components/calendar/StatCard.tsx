@@ -7,9 +7,11 @@ interface StatCardProps {
   label: string;
   value: string;
   loading: boolean;
+  /** Secondary line under the value. */
+  hint?: string;
 }
 
-export function StatCard({ icon, iconClass, label, value, loading }: StatCardProps) {
+export function StatCard({ icon, iconClass, label, value, loading, hint }: StatCardProps) {
   return (
     <Card className="shadow-sm border bg-card/40 backdrop-blur-md rounded-3xl overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="flex items-center gap-4 p-5">
@@ -27,6 +29,9 @@ export function StatCard({ icon, iconClass, label, value, loading }: StatCardPro
               {value}
             </p>
           )}
+          {hint && !loading ? (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{hint}</p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

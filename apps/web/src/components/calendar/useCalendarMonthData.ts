@@ -68,6 +68,34 @@ export function useCalendarMonthData({
     return entries;
   }, [members, subscriptions, year, month]);
 
+  // Members whose access ends this month, and what their renewals are worth in
+  // the main currency. "Upcoming" means today or later.
+  const memberStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let count = 0;
+    let total = 0;
+    let upcomingCount = 0;
+    let upcomingTotal = 0;
+
+    for (const [day, entries] of Object.entries(memberExpiriesByDay)) {
+      const upcoming = new Date(year, month - 1, Number(day)) >= today;
+      for (const { member, sub } of entries) {
+        const currency = sub.expand?.currency ?? currencyById.get(sub.currency);
+        const amount = toMain(member.amount ?? 0, currency);
+        count += 1;
+        total += amount;
+        if (upcoming) {
+          upcomingCount += 1;
+          upcomingTotal += amount;
+        }
+      }
+    }
+
+    return { count, total, upcomingCount, upcomingTotal };
+  }, [memberExpiriesByDay, currencyById, year, month]);
+
   const stats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -148,6 +176,7 @@ export function useCalendarMonthData({
     entriesByDay,
     mainCurrency,
     memberExpiriesByDay,
+    memberStats,
     selectedDayTotal,
     selectedEntries,
     selectedMemberExpiries,

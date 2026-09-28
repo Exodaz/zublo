@@ -116,6 +116,7 @@ export function CalendarPage() {
     entriesByDay,
     mainCurrency,
     memberExpiriesByDay,
+    memberStats,
     selectedDayTotal,
     selectedEntries,
     selectedMemberExpiries,
@@ -204,6 +205,7 @@ export function CalendarPage() {
         budget={budget}
         overBudget={overBudget}
         mainCurrency={mainCurrency}
+        memberStats={members.length > 0 ? memberStats : undefined}
       />
 
       <CalendarMonthCard

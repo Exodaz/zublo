@@ -302,4 +302,51 @@ describe("useCalendarMonthData", () => {
 
     expect(result.current.memberExpiriesByDay).toEqual({});
   });
+
+  it("summarises member expiries of the month in the main currency", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 3, 15, 12, 0));
+    try {
+      const member = (overrides: Partial<SubscriptionMember>): SubscriptionMember => ({
+        id: "m",
+        subscription: "sub-1",
+        user: "user-1",
+        name: "Alice",
+        ...overrides,
+      });
+      const { result } = renderHook(() =>
+        useCalendarMonthData({
+          subscriptions: [
+            getSubscription({ id: "sub-1", currency: "cur-1" }),
+            getSubscription({
+              id: "sub-2",
+              currency: "cur-2",
+              expand: { currency: getCurrency({ id: "cur-2", code: "BRL", rate: 5 }) },
+            }),
+          ],
+          cycles: [{ id: "cycle-monthly", name: "Monthly" }],
+          currencies: [getCurrency({ id: "cur-1", is_main: true })],
+          members: [
+            member({ id: "past", expires_at: "2026-04-10", amount: 400 }),
+            member({ id: "today", expires_at: "2026-04-15", amount: 400 }),
+            member({ id: "brl", subscription: "sub-2", expires_at: "2026-04-20", amount: 50 }),
+            member({ id: "no-amount", expires_at: "2026-04-25" }),
+            member({ id: "other-month", expires_at: "2026-05-01", amount: 999 }),
+          ],
+          year: 2026,
+          month: 4,
+          selectedDay: null,
+        }),
+      );
+
+      expect(result.current.memberStats).toEqual({
+        count: 4,
+        total: 810,
+        upcomingCount: 3,
+        upcomingTotal: 410,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

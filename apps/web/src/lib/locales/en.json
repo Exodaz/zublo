@@ -775,5 +775,9 @@
   "delete_selected_title": "Delete selected subscriptions",
   "confirm_delete_selected": "Delete {{count}} subscription(s)? Their members and history are deleted too.",
   "deleted_count": "Deleted {{count}} subscription(s)",
-  "delete_failed_count": "{{count}} could not be deleted"
+  "delete_failed_count": "{{count}} could not be deleted",
+  "members_expiring_month": "Members expiring this month",
+  "members_upcoming_hint": "{{count}} still to come",
+  "renewal_amount_month": "Renewals this month",
+  "renewal_upcoming_hint": "{{amount}} still to come"
 }

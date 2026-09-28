@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, RefreshCw, TrendingUp } from "lucide-react";
+import { AlertTriangle, Banknote, Clock, RefreshCw, TrendingUp, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { StatCard } from "@/components/calendar/StatCard";
@@ -13,6 +13,13 @@ interface CalendarOverviewProps {
   budget: number;
   overBudget: boolean;
   mainCurrency?: Currency;
+  /** Family-sharing expiries this month; the row is hidden when absent. */
+  memberStats?: {
+    count: number;
+    total: number;
+    upcomingCount: number;
+    upcomingTotal: number;
+  };
 }
 
 export function CalendarOverview({
@@ -23,6 +30,7 @@ export function CalendarOverview({
   budget,
   overBudget,
   mainCurrency,
+  memberStats,
 }: CalendarOverviewProps) {
   const { t } = useTranslation();
   const currencySymbol = mainCurrency?.symbol ?? "$";
@@ -53,6 +61,29 @@ export function CalendarOverview({
           loading={loading}
         />
       </div>
+
+      {memberStats ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatCard
+            icon={<Users className="h-5 w-5" />}
+            iconClass="bg-sky-500/20 text-sky-600 dark:text-sky-400"
+            label={t("members_expiring_month")}
+            value={t("members_count", { count: memberStats.count })}
+            hint={t("members_upcoming_hint", { count: memberStats.upcomingCount })}
+            loading={loading}
+          />
+          <StatCard
+            icon={<Banknote className="h-5 w-5" />}
+            iconClass="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+            label={t("renewal_amount_month")}
+            value={formatPrice(memberStats.total, currencySymbol, priceOptions)}
+            hint={t("renewal_upcoming_hint", {
+              amount: formatPrice(memberStats.upcomingTotal, currencySymbol, priceOptions),
+            })}
+            loading={loading}
+          />
+        </div>
+      ) : null}
 
       {overBudget ? (
         <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3 text-sm text-destructive">
