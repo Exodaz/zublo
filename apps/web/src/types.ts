@@ -187,6 +187,27 @@ export interface SubscriptionMember {
   /** Date the member's access ends; empty means no expiry. */
   expires_at?: string;
   notes?: string;
+  /** Months last used to renew this member; default for the next renewal. */
+  renewal_months?: number;
+  created?: string;
+}
+
+/** One payment of a family-sharing member, and the expiry it moved them to. */
+export interface MemberPayment {
+  id: string;
+  collectionId?: string;
+  member: string;
+  subscription: string;
+  user: string;
+  paid_at: string;
+  amount?: number;
+  /** 0 when the new expiry date was chosen by hand. */
+  period_months?: number;
+  expires_before?: string;
+  expires_after: string;
+  /** Protected file: open through memberPaymentsService.slipUrl. */
+  slip?: string;
+  notes?: string;
   created?: string;
 }
 

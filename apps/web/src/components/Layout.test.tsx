@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { queryKeys } from "@/lib/queryKeys";
 import type { User } from "@/types";
@@ -241,7 +241,9 @@ describe("Layout", () => {
     // mobile_navigation is true in the default mock
     const mobileNav = document.querySelector("nav.fixed.bottom-0");
     expect(mobileNav).not.toBeNull();
-    // It renders the first 5 nav items
+    // Every nav item fits, so Settings stays reachable next to the new page.
+    expect(within(mobileNav as HTMLElement).getByText("members_income")).toBeInTheDocument();
+    expect(within(mobileNav as HTMLElement).getByText("settings")).toBeInTheDocument();
     expect(screen.getAllByText("dashboard").length).toBeGreaterThan(0);
   });
 
@@ -322,6 +324,11 @@ describe("Layout", () => {
     mocks.aiSettings = { enabled: true };
     render(<Layout />);
     expect(screen.getAllByText("chat").length).toBeGreaterThan(0);
+    // Chat goes right before Settings without pushing any page out.
+    const mobileNav = document.querySelector("nav.fixed.bottom-0") as HTMLElement;
+    const targets = [...mobileNav.querySelectorAll("[data-to]")].map((el) => el.getAttribute("data-to"));
+    expect(targets.slice(-3)).toEqual(["/statistics", "/chat", "/settings"]);
+    expect(targets).toContain("/members");
   });
 
   // user?.avatar truthy → renders <img> (already covered above, but explicit test)

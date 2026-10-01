@@ -23,6 +23,11 @@ export const queryKeys = {
     // Every member of every subscription of the user: the page fetches them
     // once and groups them per card instead of querying per subscription.
     members: (userId: string) => ["subscription-members", userId] as const,
+    // Payments of every member of one subscription, fetched together.
+    memberPayments: (userId: string, subscriptionId: string) =>
+      ["member-payments", userId, subscriptionId] as const,
+    // All member payments of the user, for the Members & Income page.
+    allMemberPayments: (userId: string) => ["member-payments", userId] as const,
   },
 
   // ─── Currencies ───────────────────────────────────────────────────────────

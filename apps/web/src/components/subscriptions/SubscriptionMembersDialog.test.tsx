@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  listPayments: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -25,6 +26,23 @@ vi.mock("@/services/subscriptionMembers", () => ({
     update: mocks.update,
     delete: mocks.remove,
   },
+}));
+
+vi.mock("@/services/memberPayments", () => ({
+  memberPaymentsService: { listForSubscription: mocks.listPayments },
+}));
+
+vi.mock("./MemberPaymentDialog", () => ({
+  MemberPaymentDialog: ({ member, payments, onClose }: { member: { name: string }; payments: unknown[]; onClose: () => void }) => (
+    <div>
+      <span>
+        paying:{member.name}:{payments.length}
+      </span>
+      <button type="button" onClick={onClose}>
+        close-paying
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/lib/toast", () => ({
@@ -142,6 +160,7 @@ describe("SubscriptionMembersDialog", () => {
     mocks.create.mockResolvedValue({});
     mocks.update.mockResolvedValue({});
     mocks.remove.mockResolvedValue(undefined);
+    mocks.listPayments.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -326,5 +345,25 @@ describe("SubscriptionMembersDialog", () => {
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows the latest payment and opens the payment dialog for a member", async () => {
+    mocks.listPayments.mockResolvedValue([
+      { id: "p-2", member: "m-alice", paid_at: "2026-09-15 00:00:00.000Z" },
+      { id: "p-1", member: "m-alice", paid_at: "2026-08-15 00:00:00.000Z" },
+    ]);
+    renderDialog();
+
+    const alice = rows()[0];
+    expect(
+      await within(alice).findByText("member_paid_on:date(2026-09-15 00:00:00.000Z)"),
+    ).toBeInTheDocument();
+    expect(mocks.listPayments).toHaveBeenCalledWith("sub-1");
+    expect(within(rows()[1]).queryByText(/member_paid_on/)).not.toBeInTheDocument();
+
+    fireEvent.click(within(alice).getByRole("button", { name: "record_payment" }));
+    expect(screen.getByText("paying:Alice:2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "close-paying" }));
+    expect(screen.queryByText(/paying:/)).not.toBeInTheDocument();
   });
 });

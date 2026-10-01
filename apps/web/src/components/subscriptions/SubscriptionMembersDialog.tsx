@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Edit, Mail, Plus, Trash2, Users } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Banknote, Edit, Mail, Plus, Trash2, Users } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DateInput } from "@/components/ui/date-input";
@@ -17,15 +16,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { type MemberExpiry, memberExpiryStatus } from "@/lib/memberExpiry";
+import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "@/lib/toast";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { memberPaymentsService } from "@/services/memberPayments";
 import {
   type SubscriptionMemberInput,
   subscriptionMembersService,
 } from "@/services/subscriptionMembers";
-import type { Subscription, SubscriptionMember } from "@/types";
+import type { MemberPayment, Subscription, SubscriptionMember } from "@/types";
+
+import { MemberExpiryBadge } from "./MemberExpiryBadge";
+import { MemberPaymentDialog } from "./MemberPaymentDialog";
+
+export { MemberExpiryBadge };
 
 interface MemberFormState {
   name: string;
@@ -70,35 +75,6 @@ function sortMembers(members: SubscriptionMember[]): SubscriptionMember[] {
     (member.expires_at ?? "").slice(0, 10) || "9999-12-31";
   return [...members].sort(
     (a, b) => key(a).localeCompare(key(b)) || a.name.localeCompare(b.name),
-  );
-}
-
-export function MemberExpiryBadge({ expiry }: { expiry: MemberExpiry }) {
-  const { t } = useTranslation();
-
-  if (expiry.status === "none" || expiry.daysLeft === null) {
-    return <Badge variant="outline">{t("member_no_expiry")}</Badge>;
-  }
-  if (expiry.status === "expired") {
-    return (
-      <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/10">
-        {t("member_expired")}
-      </Badge>
-    );
-  }
-  if (expiry.status === "expiring") {
-    return (
-      <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">
-        {expiry.daysLeft === 0
-          ? t("member_expires_today")
-          : t("member_expires_in_days", { count: expiry.daysLeft })}
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:text-green-400">
-      {t("member_active")}
-    </Badge>
   );
 }
 
@@ -204,6 +180,17 @@ export function SubscriptionMembersDialog({
   // null: form hidden, "new": adding, otherwise the id being edited.
   const [editing, setEditing] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const { data: payments = [] } = useQuery({
+    queryKey: queryKeys.subscriptions.memberPayments(userId, sub.id),
+    queryFn: () => memberPaymentsService.listForSubscription(sub.id),
+    enabled: !!userId,
+  });
+  // Newest first from the service, so the first match is the latest payment.
+  const paymentsOf = (memberId: string): MemberPayment[] =>
+    payments.filter((payment) => payment.member === memberId);
+  const payingMember = members.find((member) => member.id === payingId);
 
   const currency = sub.expand?.currency;
   const symbol = currency?.symbol ?? "$";
@@ -295,6 +282,11 @@ export function SubscriptionMembersDialog({
                           {member.notes}
                         </p>
                       )}
+                      {paymentsOf(member.id)[0] && (
+                        <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+                          {t("member_paid_on", { date: formatDate(paymentsOf(member.id)[0].paid_at) })}
+                        </p>
+                      )}
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                       {(member.amount ?? 0) > 0 && (
@@ -310,6 +302,16 @@ export function SubscriptionMembersDialog({
                         </span>
                       )}
                       <MemberExpiryBadge expiry={memberExpiryStatus(member.expires_at)} />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600"
+                        onClick={() => setPayingId(member.id)}
+                        title={t("record_payment")}
+                        aria-label={t("record_payment")}
+                      >
+                        <Banknote className="h-3.5 w-3.5" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -353,6 +355,16 @@ export function SubscriptionMembersDialog({
             )
           )}
         </div>
+
+        {payingMember && (
+          <MemberPaymentDialog
+            sub={sub}
+            member={payingMember}
+            userId={userId}
+            payments={paymentsOf(payingMember.id)}
+            onClose={() => setPayingId(null)}
+          />
+        )}
 
         <ConfirmDialog
           open={!!deleteId}

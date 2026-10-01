@@ -140,6 +140,8 @@ This fork adapts Zublo to **shared and resold family plans**: Microsoft 365 Fami
 | 7 | [Export, import and multi-select delete](#7-export-and-import) | Subscriptions page | 0.7.0-family.2 / .6 |
 | 8 | [Frankfurter exchange rates](#8-frankfurter-exchange-rates) | Settings → Exchange Rate API | 0.7.0-family.3 |
 | 9 | [Service tabs and grouping](#9-service-tabs-and-grouping) | Top of the Subscriptions page | 0.7.0-family.4 |
+| 10 | [Member payments (slips + renewal)](#10-member-payments) | 💵 button in the members dialog | 0.8.0 |
+| 11 | [Members & Income page](#11-members--income-page) | Members & Income menu | 0.8.0 |
 
 ### 1. Family sharing members
 
@@ -278,6 +280,59 @@ How import handles your data (from `0.7.0-family.6` it **updates existing data**
   - the member total
 - The grouping choice is remembered in the browser.
 
+### 10. Member payments
+
+Record each member's payment with an optional slip, and extend their access automatically, e.g. member A1 (test1@email.com) in group X1.
+
+1. Open **Members** on a subscription and press **💵 Record payment** on the member's row.
+2. Fill in:
+   - the **payment date** (today by default)
+   - the **amount**
+   - the **period**: 1 month / 1 year / custom number of months
+   - an optional **slip** (image or PDF)
+   - notes
+3. The **new expiry date** is computed right away:
+   - It extends the current expiry, e.g. 14/03/2027 + 1 year → 14/03/2028.
+   - If the member has no expiry yet, it counts from the payment date.
+   - Month ends are clamped (31/01 + 1 month = 28/02, or 29/02 in leap years).
+   - You can **set the date by hand** and use "Recalculate" to go back to the computed one.
+4. **Save payment** updates the member's expiry and remembers the period for next time.
+
+Payment history:
+- Each payment shows the date paid, amount, period, expiry before → after, notes, and a button to open the slip.
+- Member rows show "Paid DD-MM-YY" for the latest payment.
+- Deleting the **latest** payment restores the previous expiry date. Deleting an older one leaves the date alone.
+- Payments cannot be edited: delete and record again, so the history stays truthful.
+
+**Slips are protected files:**
+- Only the logged-in owner can open them, through a short-lived token.
+- Plain file links and other users get nothing, which suits financial data under PDPA.
+- Deleting a member deletes their payments and slips.
+
+Payments and slips are not part of Export/Import yet.
+
+### 11. Members & Income page
+
+The **Members & Income** menu (wallet icon) brings income from every group's members and every member's status onto one page.
+
+- **Period:** opens on **this month**. Switch to a **year** or **all time**, and use ‹ › to step back or forward.
+- **Summary cards:**
+  - income in the period, in the main currency
+  - number of payments
+  - active, expiring-soon and expired members
+- **Ledger tab:**
+  - Every payment in the period: date, member, group (with logo), period, amount, new expiry date and slip.
+  - A count and total at the bottom.
+  - Click a member to open their payment dialog: history, record another payment, or delete one.
+- **Members tab:**
+  - Every member of every group, most urgent first: expired → expiring → active → no expiry.
+  - Each shows expiry, status, last paid date, total paid ever, and a 💵 record-payment button.
+  - Filter by status.
+- **Filters and search:** both tabs filter by group and search by name, email or group.
+- **Export Excel:** downloads `zublo-income-<period>.xlsx` with two sheets matching the current filters.
+  - **Ledger** columns: date, member, email, group, period, amount, currency, amount in the main currency, expiry before/after, notes, slip yes/no.
+  - **Members.**
+
 ### Example: a Microsoft 365 Family plan shared by five people
 
 1. **Add subscription:**
@@ -302,6 +357,7 @@ How import handles your data (from `0.7.0-family.6` it **updates existing data**
 | `0.7.0-family.7` | Calendar summary of member expiries and renewal amounts for the month | No |
 | `0.7.1` | Dates shown as DD-MM-YY across the app (image tags `0.7.1`, `0.7`, `latest`) | No |
 | `0.7.2` | Date fields entered as DD/MM/YYYY everywhere (member expiry, subscription form dates) with a calendar picker | No |
+| `0.8.0` | Member payments (amount, slip, period, automatic renewal, history) and the Members & Income page (ledger, member register, Excel export) | Yes (`member_payments` table, `renewal_months` field) |
 
 Migrations run automatically on start and keep existing data.
 

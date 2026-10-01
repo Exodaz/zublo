@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Settings,
   Shield,
+  Wallet,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -30,6 +31,7 @@ const baseNavItems = [
   { key: "dashboard", path: "/dashboard" as const, icon: LayoutDashboard },
   { key: "subscriptions", path: "/subscriptions" as const, icon: CreditCard },
   { key: "calendar", path: "/calendar" as const, icon: Calendar },
+  { key: "members_income", path: "/members" as const, icon: Wallet },
   { key: "statistics", path: "/statistics" as const, icon: BarChart2 },
   { key: "settings", path: "/settings" as const, icon: Settings },
 ];
@@ -50,8 +52,9 @@ export function Layout() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Chat sits just before Settings, which is always the last item.
   const navItems = aiSettings?.enabled
-    ? [...baseNavItems.slice(0, 4), chatNavItem, baseNavItems[4]]
+    ? [...baseNavItems.slice(0, -1), chatNavItem, ...baseNavItems.slice(-1)]
     : baseNavItems;
 
   return (
@@ -274,7 +277,7 @@ export function Layout() {
       {/* Mobile bottom nav (when mobile_navigation enabled) */}
       {user?.mobile_navigation && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border/40 bg-card/80 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:hidden">
-          {navItems.slice(0, 5).map(({ key, path, icon: Icon }) => {
+          {navItems.map(({ key, path, icon: Icon }) => {
             const isActive = pathname.startsWith(path);
             return (
               <Link

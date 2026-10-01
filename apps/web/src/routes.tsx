@@ -45,6 +45,9 @@ const SubscriptionsPage = lazy(() =>
 const CalendarPage = lazy(() =>
   import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })),
 );
+const MembersPage = lazy(() =>
+  import("@/pages/MembersPage").then((m) => ({ default: m.MembersPage })),
+);
 const StatisticsPage = lazy(() =>
   import("@/pages/StatisticsPage").then((m) => ({ default: m.StatisticsPage })),
 );
@@ -162,6 +165,12 @@ const calendarRoute = createRoute({
   component: CalendarPage,
 });
 
+const membersRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/members",
+  component: MembersPage,
+});
+
 const statisticsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/statistics",
@@ -221,6 +230,7 @@ const routeTree = rootRoute.addChildren([
     dashboardRoute,
     subscriptionsRoute,
     calendarRoute,
+    membersRoute,
     statisticsRoute,
     settingsRoute,
     adminRoute,
