@@ -243,6 +243,7 @@ describe("Layout", () => {
     expect(mobileNav).not.toBeNull();
     // Every nav item fits, so Settings stays reachable next to the new page.
     expect(within(mobileNav as HTMLElement).getByText("members_income")).toBeInTheDocument();
+    expect(within(mobileNav as HTMLElement).getByText("credit")).toBeInTheDocument();
     expect(within(mobileNav as HTMLElement).getByText("settings")).toBeInTheDocument();
     expect(screen.getAllByText("dashboard").length).toBeGreaterThan(0);
   });
@@ -329,6 +330,7 @@ describe("Layout", () => {
     const targets = [...mobileNav.querySelectorAll("[data-to]")].map((el) => el.getAttribute("data-to"));
     expect(targets.slice(-3)).toEqual(["/statistics", "/chat", "/settings"]);
     expect(targets).toContain("/members");
+    expect(targets).toContain("/credit");
   });
 
   // user?.avatar truthy → renders <img> (already covered above, but explicit test)

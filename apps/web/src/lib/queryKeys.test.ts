@@ -27,6 +27,8 @@ describe("queryKeys", () => {
       "subscription-members",
       "user-1",
     ]);
+    expect(queryKeys.credit.wallets("user-1")).toEqual(["credit-wallets", "user-1"]);
+    expect(queryKeys.credit.entries("user-1")).toEqual(["credit-entries", "user-1"]);
     expect(queryKeys.currencies.all("user-1")).toEqual([
       "currencies",
       "user-1",

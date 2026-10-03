@@ -48,6 +48,9 @@ const CalendarPage = lazy(() =>
 const MembersPage = lazy(() =>
   import("@/pages/MembersPage").then((m) => ({ default: m.MembersPage })),
 );
+const CreditPage = lazy(() =>
+  import("@/pages/CreditPage").then((m) => ({ default: m.CreditPage })),
+);
 const StatisticsPage = lazy(() =>
   import("@/pages/StatisticsPage").then((m) => ({ default: m.StatisticsPage })),
 );
@@ -171,6 +174,12 @@ const membersRoute = createRoute({
   component: MembersPage,
 });
 
+const creditRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: "/credit",
+  component: CreditPage,
+});
+
 const statisticsRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: "/statistics",
@@ -231,6 +240,7 @@ const routeTree = rootRoute.addChildren([
     subscriptionsRoute,
     calendarRoute,
     membersRoute,
+    creditRoute,
     statisticsRoute,
     settingsRoute,
     adminRoute,

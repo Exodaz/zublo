@@ -193,6 +193,32 @@ export interface SubscriptionMember {
 }
 
 /** One payment of a family-sharing member, and the expiry it moved them to. */
+/** A prepaid balance (e.g. App Store Credit) the subscriptions billed to `account` draw from. */
+export interface CreditWallet {
+  id: string;
+  name: string;
+  /** Matched case-insensitively against Subscription.payment_account. */
+  account: string;
+  currency?: string;
+  alerts: boolean;
+  notes?: string;
+  user: string;
+  created?: string;
+  expand?: { currency?: Currency };
+}
+
+/** A top-up (adds money) or a balance reading (sets the real balance). */
+export interface CreditEntry {
+  id: string;
+  wallet: string;
+  user: string;
+  type: "topup" | "balance";
+  amount: number;
+  date: string;
+  notes?: string;
+  created?: string;
+}
+
 export interface MemberPayment {
   id: string;
   collectionId?: string;

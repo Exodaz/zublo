@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  PiggyBank,
   Settings,
   Shield,
   Wallet,
@@ -32,6 +33,7 @@ const baseNavItems = [
   { key: "subscriptions", path: "/subscriptions" as const, icon: CreditCard },
   { key: "calendar", path: "/calendar" as const, icon: Calendar },
   { key: "members_income", path: "/members" as const, icon: Wallet },
+  { key: "credit", path: "/credit" as const, icon: PiggyBank },
   { key: "statistics", path: "/statistics" as const, icon: BarChart2 },
   { key: "settings", path: "/settings" as const, icon: Settings },
 ];

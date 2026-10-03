@@ -30,6 +30,12 @@ export const queryKeys = {
     allMemberPayments: (userId: string) => ["member-payments", userId] as const,
   },
 
+  // ─── Credit wallets ───────────────────────────────────────────────────────
+  credit: {
+    wallets: (userId: string) => ["credit-wallets", userId] as const,
+    entries: (userId: string) => ["credit-entries", userId] as const,
+  },
+
   // ─── Currencies ───────────────────────────────────────────────────────────
   currencies: {
     all: (userId: string) => ["currencies", userId] as const,

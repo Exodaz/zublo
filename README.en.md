@@ -119,6 +119,7 @@ Demo screenshots
 | Calendar | Upcoming payments and member expiries in a calendar view |
 | Dashboard | High-level cost visibility and summary metrics |
 | Statistics | Spending breakdowns and trend visibility |
+| Credit wallets (App Store Credit) | Record top-ups per Apple ID, see the estimated balance and the day the credit runs out, and get reminded before it does |
 | Currencies | Multi-currency handling with exchange-rate sync from [Frankfurter](https://frankfurter.dev) (free, no API key, 200+ currencies), Fixer.io or APILayer |
 | API access | REST usage through scoped API keys |
 | AI | Chat-based workflows, recommendations, and pluggable providers |
@@ -142,6 +143,7 @@ This fork adapts Zublo to **shared and resold family plans**: Microsoft 365 Fami
 | 9 | [Service tabs and grouping](#9-service-tabs-and-grouping) | Top of the Subscriptions page | 0.7.0-family.4 |
 | 10 | [Member payments (slips + renewal)](#10-member-payments) | 💵 button in the members dialog | 0.8.0 |
 | 11 | [Members & Income page](#11-members--income-page) | Members & Income menu | 0.8.0 |
+| 12 | [App Store Credit / credit wallets](#12-app-store-credit--credit-wallets) | Credit menu | 0.9.0 |
 
 ### 1. Family sharing members
 
@@ -333,6 +335,34 @@ The **Members & Income** menu (wallet icon) brings income from every group's mem
   - **Ledger** columns: date, member, email, group, period, amount, currency, amount in the main currency, expiry before/after, notes, slip yes/no.
   - **Members.**
 
+### 12. App Store Credit / credit wallets
+
+For prepaid accounts such as an Apple ID's App Store Credit, topped up with 1,000–2,000 THB at a time while subscriptions draw from it every month. The **Credit** menu (piggy-bank icon) shows how much is left and **the day it runs out**.
+
+**Setup**
+1. **Add wallet** and set **Account** to the **Payment account** of the subscriptions it pays for (e.g. the Apple ID). Accounts already in use are suggested.
+   - With no wallets yet, **Create wallets from payment accounts** creates one per account used with the App Store Credit payment method in one go.
+2. Pick the wallet currency (the main currency by default); prices in other currencies are converted.
+3. Press **Top up** every time you add money.
+
+**How the forecast works**
+- Every subscription whose Payment account matches the wallet (case-insensitive) is charged on its real billing dates (next payment, cycle, frequency). Inactive, cancelled and ended subscriptions are left out.
+- Balance = top-ups − charges that have fallen due.
+- **Runs out on** is the first charge the balance cannot cover, with the days left and the shortfall. If it lasts more than two years it reads *Enough for 2 years+*.
+- The Credit page is a list with one row per Apple ID: balance, run-out date, monthly cost and a **Top up** button, the soonest to run out first.
+- Click a row for the details: last top-up, the next three charges with the balance left after each (a charge that will fail is red), linked subscriptions, and edit/delete.
+- Balance colour: red = under 7 days or already out, amber = within 30 days, green = fine.
+
+**Set real balance (do this now and then)**
+Real prices drift (tax, promotions, in-app purchases). Check the balance in **Settings → Apple ID** and press **Set real balance**; the forecast continues from that figure. All top-ups and balance checks are listed, and can be deleted, under **History**.
+
+**Reminders**
+With **Remind me before it runs out** on (the default), the wallet uses the reminder days and hours from Settings → Notifications. With 3 days at 08:00, three days before the credit runs out every enabled channel (email, Telegram, Discord, webhook …) gets:
+
+> 💳 Zublo — Credit running low · Estimated balance: ฿343 · Runs out in 3 day(s) — 05-12-26: the ฿279 charge for Spotify will fail (short by ฿35).
+
+It is sent once per reminder slot per day.
+
 ### Example: a Microsoft 365 Family plan shared by five people
 
 1. **Add subscription:**
@@ -358,6 +388,7 @@ The **Members & Income** menu (wallet icon) brings income from every group's mem
 | `0.7.1` | Dates shown as DD-MM-YY across the app (image tags `0.7.1`, `0.7`, `latest`) | No |
 | `0.7.2` | Date fields entered as DD/MM/YYYY everywhere (member expiry, subscription form dates) with a calendar picker | No |
 | `0.8.0` | Member payments (amount, slip, period, automatic renewal, history) and the Members & Income page (ledger, member register, Excel export) | Yes (`member_payments` table, `renewal_months` field) |
+| `0.9.0` | Credit menu: credit wallets (App Store Credit) with top-ups and balance checks, run-out forecast and reminders | Yes (`credit_wallets`, `credit_entries` tables) |
 
 Migrations run automatically on start and keep existing data.
 

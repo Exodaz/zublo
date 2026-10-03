@@ -38,6 +38,9 @@ vi.mock("@/pages/CalendarPage", () => ({
 vi.mock("@/pages/MembersPage", () => ({
   MembersPage: () => <div>members</div>,
 }));
+vi.mock("@/pages/CreditPage", () => ({
+  CreditPage: () => <div>credit</div>,
+}));
 vi.mock("@/pages/StatisticsPage", () => ({
   StatisticsPage: () => <div>statistics</div>,
 }));
@@ -230,6 +233,15 @@ describe("route component rendering", () => {
 
   it("renders the members & income page via router (covers MembersPage lazy callback)", async () => {
     window.history.pushState({}, "", "/members");
+    const router = createAppRouter(makeContext({ user: fakeUser }));
+    await router.load();
+    render(<RouterProvider router={router} />);
+    await screen.findByText("layout");
+    expect(screen.getByText("layout")).toBeInTheDocument();
+  });
+
+  it("renders the credit page via router (covers CreditPage lazy callback)", async () => {
+    window.history.pushState({}, "", "/credit");
     const router = createAppRouter(makeContext({ user: fakeUser }));
     await router.load();
     render(<RouterProvider router={router} />);
