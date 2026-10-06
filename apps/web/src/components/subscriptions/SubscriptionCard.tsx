@@ -261,6 +261,13 @@ export function SubscriptionCard({
   const price = shouldConvert ? toMainCurrency(rawPrice, currency) : rawPrice;
   const displayCurrency = shouldConvert ? mainCurrency : currency;
   const symbol = displayCurrency?.symbol ?? "$";
+  // The currency the service is billed in, always visible; when the price is
+  // converted, the original amount too.
+  const originalLabel = currency
+    ? shouldConvert
+      ? `${currency.code} ${formatPrice(rawPrice, currency.symbol, { currencyCode: currency.code })}`
+      : currency.code
+    : "";
   const days = daysUntil(sub.next_payment);
   const progress = showProgress ? subscriptionProgress(sub.start_date, sub.next_payment) : 0;
 
@@ -343,6 +350,11 @@ export function SubscriptionCard({
               {credit ? "+" : ""}
               {formatPrice(price, symbol, { currencyCode: displayCurrency?.code })}
             </p>
+            {originalLabel && (
+              <p className="whitespace-nowrap font-mono text-[10px] text-muted-foreground" title={t("currency")}>
+                {originalLabel}
+              </p>
+            )}
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               {credit ? t("one_time") : showMonthly ? t("monthly") : periodLabel}
             </p>
@@ -437,6 +449,11 @@ export function SubscriptionCard({
             {credit ? "+" : ""}
             {formatPrice(price, symbol, { currencyCode: displayCurrency?.code })}
           </p>
+          {originalLabel && (
+            <p className="whitespace-nowrap font-mono text-xs text-muted-foreground" title={t("currency")}>
+              {originalLabel}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">
             {credit ? t("one_time") : showMonthly ? t("monthly") : periodLabel}
           </p>

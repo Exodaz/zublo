@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { CurrencyFormRow } from "@/components/settings/currencies/CurrencyFormRow";
 import { CurrencyListItem } from "@/components/settings/currencies/CurrencyListItem";
+import { DefaultCurrencySelect } from "@/components/settings/currencies/DefaultCurrencySelect";
 import { exchangeRatesConfigured } from "@/components/settings/exchange-rates/fixer.constants";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -147,6 +148,8 @@ export function CurrenciesTab() {
           </Button>
         )}
       </div>
+
+      <DefaultCurrencySelect currencies={currencies} />
 
       <Separator />
 

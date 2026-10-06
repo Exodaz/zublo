@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMemberCurrency } from "@/hooks/useMemberCurrency";
 import { formatBillingPeriod } from "@/lib/billingPeriods";
 import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { queryKeys } from "@/lib/queryKeys";
@@ -102,6 +103,7 @@ export function SubscriptionDetailDialog({
   const days = sub.next_payment ? daysUntil(sub.next_payment) : null;
   const href = sanitizeHref(sub.url);
   const membersTotal = members.reduce((sum, member) => sum + (member.amount ?? 0), 0);
+  const { memberCurrency } = useMemberCurrency(sub, userId);
 
   const { data: history } = useQuery({
     queryKey: queryKeys.subscriptions.history(userId, sub.id),
@@ -199,7 +201,12 @@ export function SubscriptionDetailDialog({
             ) : (
               <>
                 <Row label={t("members")}>
-                  {t("members_summary", { count: members.length, total: money(membersTotal) })}
+                  {t("members_summary", {
+                    count: members.length,
+                    total: formatPrice(membersTotal, memberCurrency?.symbol ?? "$", {
+                      currencyCode: memberCurrency?.code,
+                    }),
+                  })}
                 </Row>
                 <ul className="space-y-1 pt-1">
                   {members.map((member) => (

@@ -3,7 +3,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createQueryClientWrapper } from "@/test/query-client";
 import type { Subscription, SubscriptionMember } from "@/types";
 
-const mocks = vi.hoisted(() => ({ getHistory: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getHistory: vi.fn(),
+  listCurrencies: vi.fn(async () => [
+    { id: "thb", name: "Baht", symbol: "฿", code: "THB", rate: 1, is_main: true, user: "u" },
+  ]),
+}));
+
+vi.mock("@/services/currencies", () => ({ currenciesService: { list: mocks.listCurrencies } }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -106,7 +113,8 @@ describe("SubscriptionDetailDialog", () => {
     expect(screen.getByText("family@icloud.com")).toBeInTheDocument();
     expect(screen.getByText("Naruthep")).toBeInTheDocument();
 
-    expect(screen.getByText("members_summary:3,800.00 ฿")).toBeInTheDocument();
+    // Member amounts are shown in the member currency (main here).
+    expect(await screen.findByText("members_summary:3,800.00 ฿")).toBeInTheDocument();
     expect(screen.getByText("member_expired")).toBeInTheDocument();
     expect(screen.getAllByText("member_no_expiry")).toHaveLength(2);
 

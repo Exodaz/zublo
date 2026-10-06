@@ -82,7 +82,9 @@ export function useCalendarMonthData({
     for (const [day, entries] of Object.entries(memberExpiriesByDay)) {
       const upcoming = new Date(year, month - 1, Number(day)) >= today;
       for (const { member, sub } of entries) {
-        const currency = sub.expand?.currency ?? currencyById.get(sub.currency);
+        // Member amounts are in the group's member currency (main when unset).
+        const currency =
+          sub.expand?.member_currency ?? (sub.member_currency ? currencyById.get(sub.member_currency) : undefined);
         const amount = toMain(member.amount ?? 0, currency);
         count += 1;
         total += amount;

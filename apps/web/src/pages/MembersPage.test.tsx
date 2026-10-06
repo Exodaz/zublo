@@ -81,7 +81,7 @@ describe("MembersPage", () => {
     mocks.user = { id: "user-1" };
     mocks.listSubs.mockResolvedValue([
       { id: "x1", name: "X1", brand_domain: "microsoft.com", expand: { currency: baht } },
-      { id: "us", name: "US Group", expand: { currency: usd } },
+      { id: "us", name: "US Group", expand: { currency: usd, member_currency: usd } },
       { id: "empty", name: "No members" },
     ]);
     mocks.listMembers.mockResolvedValue([

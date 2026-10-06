@@ -3,7 +3,7 @@ import type { SubscriptionMember } from "@/types";
 
 export type SubscriptionMemberInput = Pick<
   SubscriptionMember,
-  "name" | "email" | "amount" | "expires_at" | "notes"
+  "name" | "email" | "amount" | "expires_at" | "notes" | "renewal_months"
 >;
 
 export const subscriptionMembersService = {

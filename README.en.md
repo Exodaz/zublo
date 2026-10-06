@@ -144,6 +144,7 @@ This fork adapts Zublo to **shared and resold family plans**: Microsoft 365 Fami
 | 10 | [Member payments (slips + renewal)](#10-member-payments) | 💵 button in the members dialog | 0.8.0 |
 | 11 | [Members & Income page](#11-members--income-page) | Members & Income menu | 0.8.0 |
 | 12 | [App Store Credit / credit wallets](#12-app-store-credit--credit-wallets) | Credit menu | 0.9.0 |
+| 13 | [Service and member currencies, member billing period](#13-service-and-member-currencies) | Cards, Select, Settings → Currencies, members dialog | 0.10.0 |
 
 ### 1. Family sharing members
 
@@ -151,7 +152,8 @@ This fork adapts Zublo to **shared and resold family plans**: Microsoft 365 Fami
 - Each member has:
   - a name (required)
   - an email
-  - the amount they pay, in the subscription's currency. It is shown as the collected total only and is not added to spending statistics.
+  - their billing period: monthly, 6 months, yearly or a custom number of months
+  - the amount they pay per period, in the group's member currency (see section 13). It is shown as the collected total only and is not added to spending statistics.
   - an expiry date, optional. Empty means no expiry.
   - notes
 - Status badges:
@@ -363,6 +365,26 @@ With **Remind me before it runs out** on (the default), the wallet uses the remi
 
 It is sent once per reminder slot per day.
 
+### 13. Service and member currencies
+
+For services billed in one currency (e.g. TRY) while members pay you in another (e.g. THB).
+
+**Service currency**
+- Each subscription has its own Currency next to the price.
+- Cards always show the billed currency code (e.g. `TRY`) under the price; when prices are converted to the main currency, the original amount is shown too, e.g. `TRY 279.99 ₺`.
+- **Change many at once:** press **Select**, pick subscriptions, choose a currency in the bar and press **Set currency** (relabels the currency; prices are not converted).
+- **Default for new subscriptions:** Settings → Currencies → *Default for new subscriptions*, e.g. TRY (the main currency by default).
+
+**Member currency**
+- In a group's members dialog, choose **Members pay in** (the main currency by default). Member amounts, member payments, the Members & Income page and the calendar summary use it.
+- Existing amounts are read as the main currency.
+
+**Member billing period**
+- In the member form, pick a **Billing period** (monthly / 6 months / yearly / custom) and the **amount per period**.
+- Members show as `80.00 ฿ / month`, `450.00 ฿ / 6 months`, `900.00 ฿ / year`.
+- The payment dialog has 1 month / 6 months / 1 year buttons and starts on the member's period; each payment updates the member's period.
+- Export/import keep the member currency and periods.
+
 ### Example: a Microsoft 365 Family plan shared by five people
 
 1. **Add subscription:**
@@ -389,6 +411,7 @@ It is sent once per reminder slot per day.
 | `0.7.2` | Date fields entered as DD/MM/YYYY everywhere (member expiry, subscription form dates) with a calendar picker | No |
 | `0.8.0` | Member payments (amount, slip, period, automatic renewal, history) and the Members & Income page (ledger, member register, Excel export) | Yes (`member_payments` table, `renewal_months` field) |
 | `0.9.0` | Credit menu: credit wallets (App Store Credit) with top-ups and balance checks, run-out forecast and reminders | Yes (`credit_wallets`, `credit_entries` tables) |
+| `0.10.0` | Currency shown on cards, bulk set currency, default currency for new subscriptions, member currency per group, member billing period (1/6/12 months) | Yes (`member_currency`, `default_currency` fields) |
 
 Migrations run automatically on start and keep existing data.
 

@@ -190,4 +190,39 @@ describe("MemberRegister", () => {
     );
     expect(screen.getByText(/\$/)).toBeInTheDocument();
   });
+
+  it("shows each member's plan in the group's member currency", () => {
+    const lira = { id: "try", name: "Lira", symbol: "₺", code: "TRY", rate: 1.3, is_main: false, user: "u" };
+    const rows = [
+      mrow({ id: "a", name: "A1", member: { amount: 80, renewal_months: 1 } as never }),
+      mrow({
+        id: "b",
+        name: "B1",
+        member: { amount: 900, renewal_months: 12 } as never,
+        sub: { ...SUB, expand: { currency: baht, member_currency: lira } } as Subscription,
+      }),
+      mrow({ id: "c", name: "C1", member: { amount: 50 } as never, sub: undefined }),
+    ];
+    render(
+      <MemberRegister rows={rows} status="all" counts={counts} mainCurrency={baht} onStatusChange={vi.fn()} onRecordPayment={vi.fn()} />,
+    );
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("80.00 ฿ per_month_suffix");
+    expect(items[1]).toHaveTextContent("900.00 ₺ per_year_suffix");
+    expect(items[2]).toHaveTextContent("50.00 ฿");
+    expect(items[2]).not.toHaveTextContent("suffix");
+  });
+
+  it("falls back to dollars for a plan without any currency", () => {
+    render(
+      <MemberRegister
+        rows={[mrow({ id: "a", name: "A1", member: { amount: 5 } as never, sub: undefined })]}
+        status="all"
+        counts={counts}
+        onStatusChange={vi.fn()}
+        onRecordPayment={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("5.00 $");
+  });
 });

@@ -57,6 +57,7 @@ export function SubscriptionsPage() {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -212,6 +213,22 @@ export function SubscriptionsPage() {
     exitSelecting();
   };
 
+  // Relabels the currency only; prices stay as entered.
+  const setCurrencySelected = async (currencyId: string) => {
+    const ids = [...liveSelection];
+    setBulkUpdating(true);
+    const outcomes = await Promise.allSettled(
+      ids.map((id) => subscriptionsService.update(id, { currency: currencyId })),
+    );
+    const failed = outcomes.filter((outcome) => outcome.status === "rejected").length;
+    setBulkUpdating(false);
+    queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all(userId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all(userId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.yearlyCosts.all(userId) });
+    if (ids.length - failed > 0) toast.success(t("currency_set", { count: ids.length - failed }));
+    if (failed > 0) toast.error(t("unknown_error"));
+  };
+
   const handleExport = async (format: "json" | "xlsx") => {
     try {
       const data = await subscriptionsService.export();
@@ -337,6 +354,9 @@ export function SubscriptionsPage() {
           selectedCount={liveSelection.size}
           visibleCount={visibleSubscriptions.length}
           deleting={bulkDeleting}
+          currencies={currencies}
+          updating={bulkUpdating}
+          onSetCurrency={(id) => void setCurrencySelected(id)}
           onSelectAll={() => setSelectedIds(new Set(visibleSubscriptions.map((sub) => sub.id)))}
           onClear={() => setSelectedIds(new Set())}
           onDelete={() => setConfirmBulkDelete(true)}

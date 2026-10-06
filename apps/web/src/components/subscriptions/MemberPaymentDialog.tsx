@@ -17,20 +17,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useMemberCurrency } from "@/hooks/useMemberCurrency";
 import { toIsoDate } from "@/lib/dateInput";
+import { MEMBER_PERIODS } from "@/lib/memberBilling";
 import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { computeExpiry } from "@/lib/memberRenewal";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "@/lib/toast";
 import { cn, formatDate, formatPrice } from "@/lib/utils";
 import { memberPaymentsService } from "@/services/memberPayments";
-import type { MemberPayment, Subscription, SubscriptionMember } from "@/types";
+import type { Currency, MemberPayment, Subscription, SubscriptionMember } from "@/types";
 
-type PeriodChoice = "1" | "12" | "custom";
+type PeriodChoice = "1" | "6" | "12" | "custom";
 
 function initialPeriod(member: SubscriptionMember): { choice: PeriodChoice; custom: string } {
   const months = member.renewal_months ?? 0;
-  if (months === 1 || months === 12) return { choice: String(months) as PeriodChoice, custom: "" };
+  if ((MEMBER_PERIODS as readonly number[]).includes(months)) {
+    return { choice: String(months) as PeriodChoice, custom: "" };
+  }
   if (months > 0) return { choice: "custom", custom: String(months) };
   return { choice: "12", custom: "" };
 }
@@ -52,6 +56,7 @@ export function MemberPaymentDialog({
   member,
   userId,
   payments,
+  currency: currencyOverride,
   onClose,
 }: {
   sub: Subscription;
@@ -59,11 +64,14 @@ export function MemberPaymentDialog({
   userId: string;
   /** This member's payments, newest first. */
   payments: MemberPayment[];
+  /** Member currency when the caller already knows it (e.g. just changed). */
+  currency?: Currency;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const currency = sub.expand?.currency;
+  const { memberCurrency } = useMemberCurrency(sub, userId);
+  const currency = currencyOverride ?? memberCurrency;
   const symbol = currency?.symbol ?? "$";
 
   const defaults = initialPeriod(member);
@@ -195,7 +203,9 @@ export function MemberPaymentDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="payment-amount">{t("amount")}</Label>
+              <Label htmlFor="payment-amount">
+                {t("amount")} ({symbol})
+              </Label>
               <Input
                 id="payment-amount"
                 type="number"
@@ -211,6 +221,7 @@ export function MemberPaymentDialog({
             <Label>{t("renewal_period")}</Label>
             <div className="flex flex-wrap items-center gap-2">
               {periodButton("1", t("period_1_month"))}
+              {periodButton("6", t("period_6_months"))}
               {periodButton("12", t("period_1_year"))}
               {periodButton("custom", t("period_custom"))}
               {period === "custom" && (

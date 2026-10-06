@@ -48,6 +48,8 @@ interface UseSubscriptionFormInput {
   sub: Subscription | null;
   currencies: Currency[];
   household: Household[];
+  /** User's preferred currency for new subscriptions (users.default_currency). */
+  defaultCurrencyId?: string;
 }
 
 const nextMonthDate = () => {
@@ -62,7 +64,7 @@ const toDateOnly = (value: string | null | undefined): string => {
   return match?.[0] ?? value.slice(0, 10);
 };
 
-export function useSubscriptionForm({ sub, currencies, household }: UseSubscriptionFormInput) {
+export function useSubscriptionForm({ sub, currencies, household, defaultCurrencyId }: UseSubscriptionFormInput) {
   const { t } = useTranslation();
 
   const { data: cycles = [] } = useQuery({
@@ -224,12 +226,14 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
       });
     } else {
       const mainCur = currencies.find((c) => c.is_main);
+      // The user's default for new subscriptions wins when it still exists.
+      const defaultCur = currencies.find((c) => c.id === defaultCurrencyId);
       const monthCycle = cycles.find((c) => c.name === "Monthly");
       reset({
         record_type: "expense",
         name: "",
         price: 0,
-        currency: mainCur?.id || currencies[0]?.id || "",
+        currency: defaultCur?.id || mainCur?.id || currencies[0]?.id || "",
         frequency: "1",
         cycle: monthCycle?.id || cycles[0]?.id || "",
         billing_preset: monthCycle ? "monthly" : "custom",
@@ -254,7 +258,7 @@ export function useSubscriptionForm({ sub, currencies, household }: UseSubscript
         payments_completed: "0",
       });
     }
-  }, [sub, currencies, cycles, household, reset]);
+  }, [sub, currencies, cycles, household, defaultCurrencyId, reset]);
 
   const watchedCurrency = watch("currency");
   const selectedCurrency = currencies.find((c) => c.id === watchedCurrency);

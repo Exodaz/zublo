@@ -79,12 +79,14 @@ function normalizeImportedMembers(raw) {
     var name = String(item.name == null ? "" : item.name).trim();
     if (!name) continue;
     var amount = parseFloat(item.amount);
+    var months = parseInt(item.renewal_months, 10);
     members.push({
       name: name.slice(0, 255),
       email: String(item.email == null ? "" : item.email).trim(),
       amount: isFinite(amount) && amount > 0 ? amount : 0,
       expires_at: normalizeImportDate(item.expires_at),
       notes: String(item.notes == null ? "" : item.notes).slice(0, 1000),
+      renewal_months: isFinite(months) && months > 0 ? Math.min(months, 120) : 0,
     });
   }
   return members;

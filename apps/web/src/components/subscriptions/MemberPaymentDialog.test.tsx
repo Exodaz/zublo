@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 
 import { queryKeys } from "@/lib/queryKeys";
 import { createQueryClientWrapper } from "@/test/query-client";
-import type { MemberPayment, Subscription, SubscriptionMember } from "@/types";
+import type { Currency, MemberPayment, Subscription, SubscriptionMember } from "@/types";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
   slipUrl: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  listCurrencies: vi.fn(),
 }));
+
+vi.mock("@/services/currencies", () => ({ currenciesService: { list: mocks.listCurrencies } }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -89,7 +92,9 @@ function payment(overrides: Partial<MemberPayment> = {}): MemberPayment {
   };
 }
 
-function renderDialog(props: { member?: SubscriptionMember; payments?: MemberPayment[]; sub?: Subscription } = {}) {
+function renderDialog(
+  props: { member?: SubscriptionMember; payments?: MemberPayment[]; sub?: Subscription; currency?: Currency } = {},
+) {
   const onClose = vi.fn();
   const { client, Wrapper } = createQueryClientWrapper();
   const invalidate = vi.spyOn(client, "invalidateQueries");
@@ -99,6 +104,7 @@ function renderDialog(props: { member?: SubscriptionMember; payments?: MemberPay
       member={props.member ?? member()}
       userId="user-1"
       payments={props.payments ?? []}
+      currency={props.currency}
       onClose={onClose}
     />,
     { wrapper: Wrapper },
@@ -118,6 +124,9 @@ describe("MemberPaymentDialog", () => {
       expires_after: `${data.get("expires_after")} 00:00:00.000Z`,
     }));
     mocks.remove.mockResolvedValue(undefined);
+    mocks.listCurrencies.mockResolvedValue([
+      { id: "c", name: "Baht", symbol: "฿", code: "THB", rate: 1, is_main: true, user: "u" },
+    ]);
   });
 
   afterEach(() => {
@@ -130,7 +139,7 @@ describe("MemberPaymentDialog", () => {
     expect(screen.getByText(/A1 · test1@email.com · X1/)).toBeInTheDocument();
     expect(screen.getByText("14-03-27")).toBeInTheDocument();
     expect(screen.getByLabelText("payment_date")).toHaveValue("01/10/2026");
-    expect(screen.getByLabelText("amount")).toHaveValue(400);
+    expect(screen.getByLabelText(/^amount \(/)).toHaveValue(400);
     expect(screen.getByRole("button", { name: "period_1_year" })).toHaveAttribute("aria-pressed", "true");
     expect(expiryInput()).toHaveValue("14/03/2028");
     expect(screen.getByText("expiry_from_hint")).toBeInTheDocument();
@@ -144,7 +153,7 @@ describe("MemberPaymentDialog", () => {
     fireEvent.change(screen.getByLabelText("slip"), { target: { files: [slip] } });
     fireEvent.change(screen.getByLabelText("slip"), { target: { files: [] } });
     fireEvent.change(screen.getByLabelText("slip"), { target: { files: [slip] } });
-    fireEvent.change(screen.getByLabelText("amount"), { target: { value: "450" } });
+    fireEvent.change(screen.getByLabelText(/^amount \(/), { target: { value: "450" } });
     fireEvent.change(screen.getByLabelText("notes"), { target: { value: " transfer KBank " } });
     fireEvent.click(screen.getByRole("button", { name: "save_payment" }));
 
@@ -201,14 +210,14 @@ describe("MemberPaymentDialog", () => {
 
   it("counts from the payment date without an expiry and remembers the custom period", async () => {
     renderDialog({
-      member: member({ expires_at: "", amount: 0, renewal_months: 6 }),
+      member: member({ expires_at: "", amount: 0, renewal_months: 3 }),
       payments: [payment({ amount: 350 })],
     });
 
     expect(screen.getByRole("button", { name: "period_custom" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("months")).toHaveValue(6);
-    expect(screen.getByLabelText("amount")).toHaveValue(350);
-    expect(expiryInput()).toHaveValue("01/04/2027");
+    expect(screen.getByLabelText("months")).toHaveValue(3);
+    expect(screen.getByLabelText(/^amount \(/)).toHaveValue(350);
+    expect(expiryInput()).toHaveValue("01/01/2027");
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
@@ -216,7 +225,7 @@ describe("MemberPaymentDialog", () => {
     renderDialog({ member: member({ amount: undefined, renewal_months: 1 }), sub: { id: "sub-1", name: "X1" } as Subscription });
 
     expect(screen.getByRole("button", { name: "period_1_month" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("amount")).toHaveValue(null);
+    expect(screen.getByLabelText(/^amount \(/)).toHaveValue(null);
     fireEvent.click(screen.getByRole("button", { name: "save_payment" }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalled());
     expect(lastForm().has("amount")).toBe(false);
@@ -313,5 +322,19 @@ describe("MemberPaymentDialog", () => {
     const { onClose } = renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "close" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("offers a six-month period and starts on it when that was the member's period", async () => {
+    renderDialog({ member: member({ renewal_months: 6, expires_at: "2026-11-01" }) });
+    expect(screen.getByRole("button", { name: "period_6_months" })).toHaveAttribute("aria-pressed", "true");
+    expect(expiryInput()).toHaveValue("01/05/2027");
+    expect(await screen.findByText("amount (฿)")).toBeInTheDocument();
+  });
+
+  it("uses the member currency given by the caller", () => {
+    renderDialog({
+      currency: { id: "t", name: "Lira", symbol: "₺", code: "TRY", rate: 1, is_main: false, user: "u" },
+    });
+    expect(screen.getByLabelText("amount (₺)")).toBeInTheDocument();
   });
 });

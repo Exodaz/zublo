@@ -72,18 +72,18 @@ describe("normalizeImportedMembers", () => {
   it("cleans members and drops entries without a name", () => {
     expect(
       normalizeImportedMembers([
-        { name: "  alice@x.com ", email: " alice@x.com ", amount: "400", expires_at: "2027-01-22", notes: "vip" },
-        { name: "bob", amount: -5, expires_at: "bad" },
-        { name: "carol", email: null, amount: null, notes: null },
+        { name: "  alice@x.com ", email: " alice@x.com ", amount: "400", expires_at: "2027-01-22", notes: "vip", renewal_months: "6" },
+        { name: "bob", amount: -5, expires_at: "bad", renewal_months: -1 },
+        { name: "carol", email: null, amount: null, notes: null, renewal_months: 999 },
         { name: "   " },
         { email: "no-name@x.com" },
         null,
         "text",
       ]),
     ).toEqual([
-      { name: "alice@x.com", email: "alice@x.com", amount: 400, expires_at: "2027-01-22", notes: "vip" },
-      { name: "bob", email: "", amount: 0, expires_at: "", notes: "" },
-      { name: "carol", email: "", amount: 0, expires_at: "", notes: "" },
+      { name: "alice@x.com", email: "alice@x.com", amount: 400, expires_at: "2027-01-22", notes: "vip", renewal_months: 6 },
+      { name: "bob", email: "", amount: 0, expires_at: "", notes: "", renewal_months: 0 },
+      { name: "carol", email: "", amount: 0, expires_at: "", notes: "", renewal_months: 120 },
     ]);
   });
 

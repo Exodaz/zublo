@@ -136,6 +136,8 @@ describe("SubscriptionCard", () => {
     expect(screen.getByText("Netflix")).toBeInTheDocument();
     expect(screen.getByText("Streaming")).toBeInTheDocument();
     expect(screen.getByText("20.00 $")).toBeInTheDocument();
+    // The billed currency and the original amount stay visible next to the converted price.
+    expect(screen.getByTitle("currency")).toHaveTextContent(/^USD \d+\.\d{2} R\$$/);
     expect(screen.getByText("monthly")).toBeInTheDocument();
     expect(screen.getByText("next")).toBeInTheDocument();
     expect(screen.getByText("Apr 10, 2026")).toBeInTheDocument();
@@ -356,6 +358,8 @@ describe("SubscriptionCard", () => {
     );
     // toMainCurrency should NOT have been called
     expect(mocks.toMainCurrency).not.toHaveBeenCalled();
+    // Unconverted: just the currency code as a badge.
+    expect(screen.getByTitle("currency")).toHaveTextContent(/^USD$/);
   });
 
   it("renders primary-colored days badge when days > 3 (line 166 false branch)", () => {

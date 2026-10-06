@@ -16,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useMemberCurrency } from "@/hooks/useMemberCurrency";
+import { MEMBER_PERIODS, memberPeriodSuffix } from "@/lib/memberBilling";
 import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "@/lib/toast";
@@ -25,6 +27,7 @@ import {
   type SubscriptionMemberInput,
   subscriptionMembersService,
 } from "@/services/subscriptionMembers";
+import { subscriptionsService } from "@/services/subscriptions";
 import type { MemberPayment, Subscription, SubscriptionMember } from "@/types";
 
 import { MemberExpiryBadge } from "./MemberExpiryBadge";
@@ -32,10 +35,15 @@ import { MemberPaymentDialog } from "./MemberPaymentDialog";
 
 export { MemberExpiryBadge };
 
+/** "" (not set), one of MEMBER_PERIODS, or "custom" with customMonths. */
+type PeriodChoice = "" | "1" | "6" | "12" | "custom";
+
 interface MemberFormState {
   name: string;
   email: string;
   amount: string;
+  period: PeriodChoice;
+  customMonths: string;
   expires_at: string;
   notes: string;
 }
@@ -44,25 +52,34 @@ const EMPTY_FORM: MemberFormState = {
   name: "",
   email: "",
   amount: "",
+  period: "",
+  customMonths: "",
   expires_at: "",
   notes: "",
 };
 
 function toFormState(member: SubscriptionMember): MemberFormState {
+  const months = member.renewal_months ?? 0;
+  const preset = (MEMBER_PERIODS as readonly number[]).includes(months);
   return {
     name: member.name,
     email: member.email ?? "",
     amount: member.amount ? String(member.amount) : "",
+    period: months <= 0 ? "" : preset ? (String(months) as PeriodChoice) : "custom",
+    customMonths: months > 0 && !preset ? String(months) : "",
     expires_at: (member.expires_at ?? "").slice(0, 10),
     notes: member.notes ?? "",
   };
 }
 
 function toInput(form: MemberFormState): SubscriptionMemberInput {
+  const months =
+    form.period === "custom" ? Math.max(0, Math.floor(Number(form.customMonths) || 0)) : Number(form.period);
   return {
     name: form.name.trim(),
     email: form.email.trim(),
     amount: form.amount === "" ? 0 : Number(form.amount),
+    renewal_months: months,
     expires_at: form.expires_at,
     notes: form.notes.trim(),
   };
@@ -80,11 +97,14 @@ function sortMembers(members: SubscriptionMember[]): SubscriptionMember[] {
 
 function MemberForm({
   initial,
+  symbol,
   saving,
   onSubmit,
   onCancel,
 }: {
   initial: MemberFormState;
+  /** Symbol of the member currency, shown next to the amount. */
+  symbol: string;
   saving: boolean;
   onSubmit: (form: MemberFormState) => void;
   onCancel: () => void;
@@ -127,7 +147,37 @@ function MemberForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="member-amount">{t("member_amount")}</Label>
+          <Label htmlFor="member-period">{t("member_billing_period")}</Label>
+          <div className="flex gap-2">
+            <select
+              id="member-period"
+              value={form.period}
+              onChange={(e) => set("period")(e.target.value)}
+              className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm"
+            >
+              <option value="">—</option>
+              <option value="1">{t("period_1_month")}</option>
+              <option value="6">{t("period_6_months")}</option>
+              <option value="12">{t("period_1_year")}</option>
+              <option value="custom">{t("period_custom")}</option>
+            </select>
+            {form.period === "custom" && (
+              <Input
+                aria-label={t("months")}
+                type="number"
+                min="1"
+                step="1"
+                className="w-20"
+                value={form.customMonths}
+                onChange={(e) => set("customMonths")(e.target.value)}
+              />
+            )}
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="member-amount">
+            {t("amount_per_period")} ({symbol})
+          </Label>
           <Input
             id="member-amount"
             type="number"
@@ -192,13 +242,24 @@ export function SubscriptionMembersDialog({
     payments.filter((payment) => payment.member === memberId);
   const payingMember = members.find((member) => member.id === payingId);
 
-  const currency = sub.expand?.currency;
+  // Members pay in the group's member currency, which can differ from the price's.
+  const [memberCurrencyId, setMemberCurrencyId] = useState<string | undefined>(undefined);
+  const { currencies, memberCurrency: currency } = useMemberCurrency(sub, userId, memberCurrencyId);
   const symbol = currency?.symbol ?? "$";
   const sorted = sortMembers(members);
   const total = members.reduce((sum, member) => sum + (member.amount ?? 0), 0);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.members(userId) });
+
+  const currencyMutation = useMutation({
+    mutationFn: (id: string) => subscriptionsService.update(sub.id, { member_currency: id }),
+    onSuccess: (_, id) => {
+      setMemberCurrencyId(id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all(userId) });
+    },
+    onError: () => toast.error(t("unknown_error")),
+  });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, form }: { id: string | null; form: MemberFormState }) =>
@@ -236,6 +297,26 @@ export function SubscriptionMembersDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/30 px-3 py-2">
+            <div>
+              <Label htmlFor="members-currency">{t("members_pay_in")}</Label>
+              <p className="text-xs text-muted-foreground">{t("members_pay_in_hint")}</p>
+            </div>
+            <select
+              id="members-currency"
+              value={currency?.id ?? ""}
+              disabled={currencyMutation.isPending}
+              onChange={(e) => currencyMutation.mutate(e.target.value)}
+              className="h-9 rounded-lg border bg-background px-2 text-sm"
+            >
+              {currencies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.symbol} {c.code}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {members.length > 0 && (
             <p className="text-sm text-muted-foreground">
               {t("members_summary", {
@@ -256,6 +337,7 @@ export function SubscriptionMembersDialog({
                   <li key={member.id}>
                     <MemberForm
                       initial={toFormState(member)}
+                      symbol={symbol}
                       saving={saveMutation.isPending}
                       onSubmit={(form) => saveMutation.mutate({ id: member.id, form })}
                       onCancel={() => setEditing(null)}
@@ -294,6 +376,11 @@ export function SubscriptionMembersDialog({
                           {formatPrice(member.amount!, symbol, {
                             currencyCode: currency?.code,
                           })}
+                          {memberPeriodSuffix(t, member.renewal_months) && (
+                            <span className="ml-1 font-sans text-xs font-normal text-muted-foreground">
+                              {memberPeriodSuffix(t, member.renewal_months)}
+                            </span>
+                          )}
                         </span>
                       )}
                       {member.expires_at && (
@@ -342,6 +429,7 @@ export function SubscriptionMembersDialog({
           {editing === "new" ? (
             <MemberForm
               initial={EMPTY_FORM}
+              symbol={symbol}
               saving={saveMutation.isPending}
               onSubmit={(form) => saveMutation.mutate({ id: null, form })}
               onCancel={() => setEditing(null)}
@@ -362,6 +450,7 @@ export function SubscriptionMembersDialog({
             member={payingMember}
             userId={userId}
             payments={paymentsOf(payingMember.id)}
+            currency={currency}
             onClose={() => setPayingId(null)}
           />
         )}

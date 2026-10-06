@@ -174,6 +174,7 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       let endDate, paymentLimit, paymentsCompleted;
       let categoryId, paymentMethodId, payerId;
       let autoMarkPaid = false, brandDomain = "", paymentAccount = "", members = [];
+      let memberCurrencyId = "";
       let startDate = "";
       let hasMembers = false;
 
@@ -264,6 +265,7 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
         autoMarkPaid = !!val("auto_mark_paid");
         brandDomain = brandLogo.normalizeBrandDomain(val("brand_domain"));
         paymentAccount = String(val("payment_account") || "").trim().slice(0, 255);
+        memberCurrencyId = relation("member_currency", (code) => (code ? findCurrencyByCode(code) : ""));
         hasMembers = has("members");
         members = importParsers.normalizeImportedMembers(sub.members);
       }
@@ -305,6 +307,7 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
       rec.set("cancellation_date", cancellationDate);
       rec.set("end_date", endDate);
       if (currencyId) rec.set("currency", currencyId);
+      if (!isWallos) rec.set("member_currency", memberCurrencyId || "");
       if (cycleId) rec.set("cycle", cycleId);
       rec.set("category", categoryId || "");
       rec.set("payment_method", paymentMethodId || "");
@@ -348,6 +351,8 @@ routerAdd("POST", "/api/subscriptions/import", (e) => {
           m.set("amount", member.amount);
           m.set("expires_at", member.expires_at);
           m.set("notes", member.notes);
+          // Older files have no period; keep the one already on the member.
+          if (member.renewal_months > 0) m.set("renewal_months", member.renewal_months);
           $app.save(m);
           if (current[key]) {
             results.members_updated++;
@@ -401,7 +406,7 @@ routerAdd("POST", "/api/subscription/clone", (e) => {
   const fieldsToCopy = [
     "name", "price", "record_type", "frequency", "next_payment", "auto_renew",
     "start_date", "notes", "url", "notify", "notify_days_before",
-    "cancellation_date", "currency", "cycle",
+    "cancellation_date", "currency", "member_currency", "cycle",
     "end_date", "payment_limit", "auto_mark_paid",
     "payment_method", "payer", "category", "user",
   ];
@@ -530,6 +535,13 @@ routerAdd("GET", "/api/subscriptions/export", (e) => {
       currencyCode = cur.get("code");
     } catch (_) { }
 
+    let memberCurrencyCode = "";
+    if (sub.getString("member_currency")) {
+      try {
+        memberCurrencyCode = $app.findRecordById("currencies", sub.getString("member_currency")).getString("code");
+      } catch (_) { }
+    }
+
     let cycleName = "";
     try {
       const cycle = $app.findRecordById("cycles", sub.get("cycle"));
@@ -562,6 +574,7 @@ routerAdd("GET", "/api/subscriptions/export", (e) => {
       amount: m.get("amount"),
       expires_at: m.getString("expires_at").slice(0, 10),
       notes: m.getString("notes"),
+      renewal_months: m.getInt("renewal_months"),
     }));
 
     exported.push({
@@ -593,6 +606,7 @@ routerAdd("GET", "/api/subscriptions/export", (e) => {
       auto_mark_paid: sub.get("auto_mark_paid"),
       brand_domain: sub.getString("brand_domain"),
       payment_account: sub.getString("payment_account"),
+      member_currency: memberCurrencyCode,
       members: members,
     });
   }

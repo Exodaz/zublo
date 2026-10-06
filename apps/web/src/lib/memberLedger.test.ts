@@ -18,7 +18,7 @@ import {
 const baht = { id: "thb", name: "Baht", symbol: "฿", code: "THB", rate: 1, is_main: true, user: "u" };
 const usd = { id: "usd", name: "Dollar", symbol: "$", code: "USD", rate: 0.03, is_main: false, user: "u" };
 const sub = (id: string, name: string, currency = baht) =>
-  ({ id, name, expand: { currency } }) as Subscription;
+  ({ id, name, expand: { currency, member_currency: currency } }) as Subscription;
 const member = (o: Partial<SubscriptionMember>): SubscriptionMember => ({
   id: "m",
   subscription: "x1",
@@ -170,7 +170,8 @@ describe("ledger and register", () => {
         group: "",
         period_months: 0,
         amount: 0,
-        currency: "",
+        // No group: the amount is in the main currency.
+        currency: "THB",
         amount_THB: 0,
         expires_before: "",
         expires_after: "05/10/2027",

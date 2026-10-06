@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   listHousehold: vi.fn(),
   listMembers: vi.fn(),
   deleteSubscription: vi.fn(),
+  updateSubscription: vi.fn(),
   cloneSubscription: vi.fn(),
   renewSubscription: vi.fn(),
   exportSubscriptions: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock("@/services/subscriptions", () => ({
   subscriptionsService: {
     list: mocks.listSubscriptions,
     delete: mocks.deleteSubscription,
+    update: mocks.updateSubscription,
     clone: mocks.cloneSubscription,
     renew: mocks.renewSubscription,
     export: mocks.exportSubscriptions,
@@ -957,6 +959,62 @@ describe("SubscriptionsPage", () => {
         expect(mocks.toastError).toHaveBeenCalledWith('delete_failed_count:{"count":1}'),
       );
       expect(mocks.toastSuccess).not.toHaveBeenCalledWith(expect.stringContaining("deleted_count"));
+    });
+
+    it("sets a currency on the selection, keeping prices, and reports failures", async () => {
+      mocks.updateSubscription.mockImplementation((id: string) =>
+        id === "sub-2" ? Promise.reject(new Error("nope")) : Promise.resolve({}),
+      );
+      const { client, Wrapper } = createQueryClientWrapper();
+      const invalidate = vi.spyOn(client, "invalidateQueries");
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "select_all" }));
+      await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1));
+      fireEvent.change(screen.getByLabelText("currency"), { target: { value: "cur-1" } });
+      fireEvent.click(screen.getByRole("button", { name: /set_currency/ }));
+
+      await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith('currency_set:{"count":2}'));
+      expect(mocks.toastError).toHaveBeenCalledWith("unknown_error");
+      expect(mocks.updateSubscription).toHaveBeenCalledWith("sub-1", { currency: "cur-1" });
+      expect(mocks.updateSubscription).toHaveBeenCalledTimes(3);
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.yearlyCosts.all("user-1") });
+      // Still in select mode, so more changes can follow.
+      expect(screen.getByText("selectable:true")).toBeInTheDocument();
+    });
+
+    it("reports only success when every currency change works", async () => {
+      mocks.updateSubscription.mockResolvedValue({});
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1));
+      fireEvent.change(screen.getByLabelText("currency"), { target: { value: "cur-1" } });
+      fireEvent.click(screen.getByRole("button", { name: /set_currency/ }));
+
+      await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith('currency_set:{"count":1}'));
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+
+    it("only reports the failure when no currency change worked", async () => {
+      mocks.updateSubscription.mockRejectedValue(new Error("nope"));
+      const { Wrapper } = createQueryClientWrapper();
+      render(<SubscriptionsPage />, { wrapper: Wrapper });
+      await waitFor(() => screen.getByText("grid:3"));
+
+      fireEvent.click(screen.getByRole("button", { name: "select" }));
+      fireEvent.click(screen.getByRole("button", { name: "toggle-first" }));
+      await waitFor(() => expect(screen.getAllByRole("option").length).toBeGreaterThan(1));
+      fireEvent.change(screen.getByLabelText("currency"), { target: { value: "cur-1" } });
+      fireEvent.click(screen.getByRole("button", { name: /set_currency/ }));
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("unknown_error"));
+      expect(mocks.toastSuccess).not.toHaveBeenCalledWith(expect.stringContaining("currency_set"));
     });
 
     it("drops selected ids that no longer exist", async () => {

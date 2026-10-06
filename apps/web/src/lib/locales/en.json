@@ -887,5 +887,18 @@
   "no_topup_yet": "No top-up yet",
   "lasts_2_years": "2 years+",
   "runs_out": "Runs out",
-  "wallet_details": "Details"
+  "wallet_details": "Details",
+  "per_month_suffix": "/ month",
+  "per_year_suffix": "/ year",
+  "per_months_suffix": "/ {{count}} months",
+  "members_pay_in": "Members pay in",
+  "members_pay_in_hint": "Currency of member amounts and payments. Can differ from the service price currency.",
+  "member_billing_period": "Billing period",
+  "amount_per_period": "Amount per period",
+  "period_6_months": "6 months",
+  "set_currency": "Set currency",
+  "currency_set": "Currency set on {{count}} subscription(s)",
+  "default_new_currency": "Default for new subscriptions",
+  "default_new_currency_hint": "Currency preselected when you add a subscription.",
+  "main_currency_option": "Main currency"
 }

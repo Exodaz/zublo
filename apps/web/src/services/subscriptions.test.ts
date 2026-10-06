@@ -54,15 +54,15 @@ describe("subscriptionsService", () => {
 
     expect(getFullList).toHaveBeenNthCalledWith(1, {
       filter: "filter:all:user-1",
-      expand: "currency,cycle,category,payment_method,payer",
+      expand: "currency,member_currency,cycle,category,payment_method,payer",
     });
     expect(getFullList).toHaveBeenNthCalledWith(2, {
       filter: "filter:active:user-1",
-      expand: "currency,cycle",
+      expand: "currency,member_currency,cycle",
     });
     expect(getFullList).toHaveBeenNthCalledWith(3, {
       filter: "filter:active-expanded:user-1",
-      expand: "currency,cycle,category,payment_method,payer",
+      expand: "currency,member_currency,cycle,category,payment_method,payer",
     });
   });
 

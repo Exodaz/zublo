@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   listPayments: vi.fn(),
+  listCurrencies: vi.fn(),
+  updateSub: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -32,11 +34,24 @@ vi.mock("@/services/memberPayments", () => ({
   memberPaymentsService: { listForSubscription: mocks.listPayments },
 }));
 
+vi.mock("@/services/currencies", () => ({ currenciesService: { list: mocks.listCurrencies } }));
+vi.mock("@/services/subscriptions", () => ({ subscriptionsService: { update: mocks.updateSub } }));
+
 vi.mock("./MemberPaymentDialog", () => ({
-  MemberPaymentDialog: ({ member, payments, onClose }: { member: { name: string }; payments: unknown[]; onClose: () => void }) => (
+  MemberPaymentDialog: ({
+    member,
+    payments,
+    currency,
+    onClose,
+  }: {
+    member: { name: string };
+    payments: unknown[];
+    currency?: { code: string };
+    onClose: () => void;
+  }) => (
     <div>
       <span>
-        paying:{member.name}:{payments.length}
+        paying:{member.name}:{payments.length}:{currency?.code}
       </span>
       <button type="button" onClick={onClose}>
         close-paying
@@ -107,6 +122,9 @@ function getSubscription(overrides: Partial<Subscription> = {}): Subscription {
   };
 }
 
+const BAHT = { id: "cur-1", name: "Baht", symbol: "฿", code: "THB", rate: 1, is_main: true, user: "user-1" };
+const LIRA = { id: "cur-2", name: "Lira", symbol: "₺", code: "TRY", rate: 1.3, is_main: false, user: "user-1" };
+
 function member(overrides: Partial<SubscriptionMember>): SubscriptionMember {
   return { id: "m", subscription: "sub-1", user: "user-1", name: "Member", ...overrides };
 }
@@ -148,7 +166,7 @@ function rows() {
   return screen.getAllByRole("listitem");
 }
 
-function fill(label: string, value: string) {
+function fill(label: string | RegExp, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
@@ -161,17 +179,20 @@ describe("SubscriptionMembersDialog", () => {
     mocks.update.mockResolvedValue({});
     mocks.remove.mockResolvedValue(undefined);
     mocks.listPayments.mockResolvedValue([]);
+    mocks.listCurrencies.mockResolvedValue([BAHT, LIRA]);
+    mocks.updateSub.mockResolvedValue({});
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("lists members soonest expiry first with their status, amount and contact", () => {
+  it("lists members soonest expiry first with their status, amount and contact", async () => {
     renderDialog();
 
     expect(screen.getByText("Netflix")).toBeInTheDocument();
-    expect(screen.getByText("members_summary:6,150.00 ฿")).toBeInTheDocument();
+    // Members pay in the main currency unless the group sets one.
+    expect(await screen.findByText("members_summary:6,150.00 ฿")).toBeInTheDocument();
     expect(rows().map((row) => within(row).getByText(/^[A-Z][a-z]+$/).textContent)).toEqual([
       "Alice",
       "Bob",
@@ -217,7 +238,7 @@ describe("SubscriptionMembersDialog", () => {
 
     fill("name *", "  Grace  ");
     fill("email", " grace@example.com ");
-    fill("member_amount", "12.5");
+    fill(/amount_per_period/, "12.5");
     fill("member_expires_at", "31/10/2026");
     fill("notes", " family ");
     expect(save).toBeEnabled();
@@ -228,6 +249,7 @@ describe("SubscriptionMembersDialog", () => {
       name: "Grace",
       email: "grace@example.com",
       amount: 12.5,
+      renewal_months: 0,
       expires_at: "2026-10-31",
       notes: "family",
     });
@@ -243,7 +265,7 @@ describe("SubscriptionMembersDialog", () => {
     fireEvent.click(within(rows()[0]).getByRole("button", { name: "edit" }));
     expect(screen.getByLabelText("name *")).toHaveValue("Alice");
     expect(screen.getByLabelText("email")).toHaveValue("alice@example.com");
-    expect(screen.getByLabelText("member_amount")).toHaveValue(100);
+    expect(screen.getByLabelText(/amount_per_period/)).toHaveValue(100);
     expect(screen.getByLabelText("member_expires_at")).toHaveValue("20/09/2026");
     expect(screen.getByLabelText("notes")).toHaveValue("Paid by transfer");
     // The add button is hidden while a row is being edited.
@@ -257,6 +279,7 @@ describe("SubscriptionMembersDialog", () => {
         name: "Alice",
         email: "alice@example.com",
         amount: 100,
+        renewal_months: 0,
         expires_at: "2026-10-20",
         notes: "Paid by transfer",
       }),
@@ -269,7 +292,7 @@ describe("SubscriptionMembersDialog", () => {
     fireEvent.click(within(rows()[4]).getByRole("button", { name: "edit" }));
     expect(screen.getByLabelText("name *")).toHaveValue("Eve");
     expect(screen.getByLabelText("email")).toHaveValue("");
-    expect(screen.getByLabelText("member_amount")).toHaveValue(null);
+    expect(screen.getByLabelText(/amount_per_period/)).toHaveValue(null);
     expect(screen.getByLabelText("member_expires_at")).toHaveValue("");
     expect(screen.getByLabelText("notes")).toHaveValue("");
 
@@ -283,6 +306,7 @@ describe("SubscriptionMembersDialog", () => {
         name: "Eve",
         email: "",
         amount: 0,
+        renewal_months: 0,
         expires_at: "",
         notes: "",
       }),
@@ -362,8 +386,60 @@ describe("SubscriptionMembersDialog", () => {
     expect(within(rows()[1]).queryByText(/member_paid_on/)).not.toBeInTheDocument();
 
     fireEvent.click(within(alice).getByRole("button", { name: "record_payment" }));
-    expect(screen.getByText("paying:Alice:2")).toBeInTheDocument();
+    expect(screen.getByText("paying:Alice:2:THB")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "close-paying" }));
     expect(screen.queryByText(/paying:/)).not.toBeInTheDocument();
+  });
+
+  it("sets the billing period, including a custom one, and shows it per member", async () => {
+    renderDialog({
+      members: [
+        member({ id: "m-1", name: "Monthly", amount: 80, renewal_months: 1 }),
+        member({ id: "m-6", name: "Half", amount: 450, renewal_months: 6 }),
+        member({ id: "m-3", name: "Odd", amount: 200, renewal_months: 3 }),
+      ],
+    });
+    expect(await screen.findByText("per_month_suffix")).toBeInTheDocument();
+    expect(screen.getByText("per_months_suffix:6")).toBeInTheDocument();
+
+    const odd = rows().find((row) => within(row).queryByText("Odd"))!;
+    fireEvent.click(within(odd).getByRole("button", { name: "edit" }));
+    expect(screen.getByLabelText("member_billing_period")).toHaveValue("custom");
+    expect(screen.getByLabelText("months")).toHaveValue(3);
+    fill("months", "4");
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("m-3", expect.objectContaining({ renewal_months: 4 })));
+
+    const half = rows().find((row) => within(row).queryByText("Half"))!;
+    fireEvent.click(within(half).getByRole("button", { name: "edit" }));
+    expect(screen.getByLabelText("member_billing_period")).toHaveValue("6");
+    fireEvent.change(screen.getByLabelText("member_billing_period"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("m-6", expect.objectContaining({ renewal_months: 12 })));
+  });
+
+  it("treats a blank custom period as none", async () => {
+    renderDialog({ members: [] });
+    fireEvent.click(screen.getByRole("button", { name: /add_member/ }));
+    fill("name *", "Grace");
+    fireEvent.change(screen.getByLabelText("member_billing_period"), { target: { value: "custom" } });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith("user-1", "sub-1", expect.objectContaining({ renewal_months: 0 })));
+  });
+
+  it("changes the currency members pay in", async () => {
+    const { invalidate } = renderDialog({ sub: getSubscription({ member_currency: "cur-2" }) });
+    const select = screen.getByLabelText("members_pay_in");
+    await waitFor(() => expect(select).toHaveValue("cur-2"));
+    expect(screen.getByText("members_summary:6,150.00 ₺")).toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "cur-1" } });
+    await waitFor(() => expect(mocks.updateSub).toHaveBeenCalledWith("sub-1", { member_currency: "cur-1" }));
+    await waitFor(() => expect(select).toHaveValue("cur-1"));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.subscriptions.all("user-1") });
+
+    mocks.updateSub.mockRejectedValueOnce(new Error("nope"));
+    fireEvent.change(select, { target: { value: "cur-2" } });
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith("unknown_error"));
   });
 });

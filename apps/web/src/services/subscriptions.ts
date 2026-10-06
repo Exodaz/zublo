@@ -3,7 +3,7 @@ import { brandLogoUrl } from "@/lib/brandLogo";
 import pb from "@/lib/pb";
 import type { Subscription } from "@/types";
 
-const FULL_EXPAND = "currency,cycle,category,payment_method,payer";
+const FULL_EXPAND = "currency,member_currency,cycle,category,payment_method,payer";
 
 export const subscriptionsService = {
   /** All subscriptions for a user (active + inactive), with full relations. */
@@ -17,7 +17,7 @@ export const subscriptionsService = {
   listActive: (userId: string) =>
     pb.collection("subscriptions").getFullList<Subscription>({
       filter: pb.filter("user = {:userId} && inactive = false", { userId }),
-      expand: "currency,cycle",
+      expand: "currency,member_currency,cycle",
     }),
 
   /** Only active subscriptions with full expand — used by statistics. */

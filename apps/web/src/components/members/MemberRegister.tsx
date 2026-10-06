@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { MemberExpiryBadge } from "@/components/subscriptions/MemberExpiryBadge";
 import { ServiceIcon } from "@/components/subscriptions/SubscriptionsServiceTabs";
 import { Button } from "@/components/ui/button";
+import { memberCurrencyOf, memberPeriodSuffix } from "@/lib/memberBilling";
 import type { MemberRow, StatusFilter } from "@/lib/memberLedger";
 import { serviceKeyOf } from "@/lib/serviceGroups";
 import { cn, formatDate, formatPrice } from "@/lib/utils";
@@ -30,6 +31,12 @@ export function MemberRegister({
 }) {
   const { t } = useTranslation();
   const mainSymbol = mainCurrency?.symbol ?? "$";
+  // Only called for members with an amount.
+  const memberPlan = (row: MemberRow) => {
+    const currency = memberCurrencyOf(row.sub, mainCurrency);
+    const price = formatPrice(row.member.amount!, currency?.symbol ?? "$", { currencyCode: currency?.code });
+    return [price, memberPeriodSuffix(t, row.member.renewal_months)].filter(Boolean).join(" ");
+  };
 
   return (
     <div className="space-y-3">
@@ -78,6 +85,11 @@ export function MemberRegister({
                   {row.member.email && row.member.email !== row.member.name && (
                     <span className="block truncate text-xs text-muted-foreground">
                       {row.member.email}
+                    </span>
+                  )}
+                  {(row.member.amount ?? 0) > 0 && (
+                    <span className="block text-xs text-muted-foreground">
+                      {memberPlan(row)}
                     </span>
                   )}
                 </span>

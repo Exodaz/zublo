@@ -15,12 +15,18 @@ function renderBar(props: Partial<Parameters<typeof SubscriptionsSelectionBar>[0
     onClear: vi.fn(),
     onDelete: vi.fn(),
     onClose: vi.fn(),
+    onSetCurrency: vi.fn(),
   };
   render(
     <SubscriptionsSelectionBar
       selectedCount={2}
       visibleCount={5}
       deleting={false}
+      updating={false}
+      currencies={[
+        { id: "try", name: "Lira", code: "TRY", symbol: "₺", rate: 1, is_main: false, user: "u" },
+        { id: "thb", name: "Baht", code: "THB", symbol: "฿", rate: 1, is_main: true, user: "u" },
+      ]}
       {...handlers}
       {...props}
     />,
@@ -55,5 +61,20 @@ describe("SubscriptionsSelectionBar", () => {
     renderBar({ selectedCount: 5, visibleCount: 5, deleting: true });
     expect(screen.getByRole("button", { name: "select_all" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /delete_selected/ })).toBeDisabled();
+  });
+
+  it("sets a currency on the selection once one is picked", () => {
+    const handlers = renderBar();
+    const apply = screen.getByRole("button", { name: /set_currency/ });
+    expect(apply).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("currency"), { target: { value: "try" } });
+    fireEvent.click(apply);
+    expect(handlers.onSetCurrency).toHaveBeenCalledWith("try");
+  });
+
+  it("disables set currency while updating or with nothing selected", () => {
+    renderBar({ updating: true });
+    fireEvent.change(screen.getByLabelText("currency"), { target: { value: "try" } });
+    expect(screen.getByRole("button", { name: /set_currency/ })).toBeDisabled();
   });
 });

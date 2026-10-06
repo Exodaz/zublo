@@ -82,7 +82,8 @@ export function buildLedgerRows(
       payment,
       member: membersById.get(payment.member),
       sub,
-      amountMain: toMainCurrency(payment.amount ?? 0, sub?.expand?.currency),
+      // Member payments are in the group's member currency (main when unset).
+      amountMain: toMainCurrency(payment.amount ?? 0, sub?.expand?.member_currency),
     };
   });
 }
@@ -121,7 +122,7 @@ export function buildMemberRows(
       daysLeft: expiry.daysLeft,
       lastPaid: own.reduce((latest, p) => (toDay(p.paid_at) > latest ? toDay(p.paid_at) : latest), ""),
       totalPaidMain: own.reduce(
-        (sum, p) => sum + toMainCurrency(p.amount ?? 0, sub?.expand?.currency),
+        (sum, p) => sum + toMainCurrency(p.amount ?? 0, sub?.expand?.member_currency),
         0,
       ),
       paymentCount: own.length,
@@ -198,7 +199,7 @@ export function toLedgerSheet(rows: LedgerRow[], mainCode: string): Record<strin
     group: sub?.name ?? "",
     period_months: payment.period_months ?? 0,
     amount: payment.amount ?? 0,
-    currency: sub?.expand?.currency?.code ?? "",
+    currency: sub?.expand?.member_currency?.code ?? mainCode,
     [`amount_${mainCode || "main"}`]: Math.round(amountMain * 100) / 100,
     expires_before: isoToDisplay(payment.expires_before),
     expires_after: isoToDisplay(payment.expires_after),

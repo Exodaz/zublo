@@ -8,6 +8,8 @@ export interface User {
   avatar?: string;
   language?: string;
   main_currency?: string;
+  /** Preselected currency for new subscriptions; empty means the main currency. */
+  default_currency?: string;
   totp_enabled?: boolean;
   totp_configured?: boolean;
   color_theme?: string;
@@ -114,6 +116,8 @@ export interface Subscription {
   payment_method?: string;
   /** Account the subscription is billed to, e.g. an Apple ID. */
   payment_account?: string;
+  /** Currency members pay in (member amounts and payments); empty means the main currency. */
+  member_currency?: string;
   payer?: string;
   category?: string;
   notes?: string;
@@ -138,6 +142,7 @@ export interface Subscription {
   // Expanded relations
   expand?: {
     currency?: Currency;
+    member_currency?: Currency;
     cycle?: Cycle;
     category?: Category;
     payment_method?: PaymentMethod;
@@ -182,12 +187,12 @@ export interface SubscriptionMember {
   user: string;
   name: string;
   email?: string;
-  /** What this member pays, in the subscription's currency. Informational only. */
+  /** What this member pays per period (renewal_months), in the group's member currency. */
   amount?: number;
   /** Date the member's access ends; empty means no expiry. */
   expires_at?: string;
   notes?: string;
-  /** Months last used to renew this member; default for the next renewal. */
+  /** The member's billing period in months (1, 6, 12 …); set in the member form and by each renewal. */
   renewal_months?: number;
   created?: string;
 }

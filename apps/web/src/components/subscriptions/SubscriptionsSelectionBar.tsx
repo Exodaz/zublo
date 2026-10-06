@@ -1,12 +1,18 @@
-import { Trash2, X } from "lucide-react";
+import { Coins, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import type { Currency } from "@/types";
 
 interface Props {
   selectedCount: number;
   visibleCount: number;
   deleting: boolean;
+  currencies: Currency[];
+  /** True while a bulk currency change is running. */
+  updating: boolean;
+  onSetCurrency: (currencyId: string) => void;
   onSelectAll: () => void;
   onClear: () => void;
   onDelete: () => void;
@@ -18,12 +24,16 @@ export function SubscriptionsSelectionBar({
   selectedCount,
   visibleCount,
   deleting,
+  currencies,
+  updating,
+  onSetCurrency,
   onSelectAll,
   onClear,
   onDelete,
   onClose,
 }: Props) {
   const { t } = useTranslation();
+  const [currencyId, setCurrencyId] = useState("");
 
   return (
     <div
@@ -45,7 +55,29 @@ export function SubscriptionsSelectionBar({
       <Button variant="ghost" size="sm" onClick={onClear} disabled={selectedCount === 0}>
         {t("clear_selection")}
       </Button>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <select
+          aria-label={t("currency")}
+          value={currencyId}
+          onChange={(e) => setCurrencyId(e.target.value)}
+          className="h-8 rounded-lg border bg-background px-2 text-sm"
+        >
+          <option value="">{t("currency")}…</option>
+          {currencies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.symbol} {c.code}
+            </option>
+          ))}
+        </select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onSetCurrency(currencyId)}
+          disabled={selectedCount === 0 || !currencyId || updating}
+        >
+          <Coins className="mr-1.5 h-4 w-4" />
+          {t("set_currency")}
+        </Button>
         <Button
           variant="destructive"
           size="sm"

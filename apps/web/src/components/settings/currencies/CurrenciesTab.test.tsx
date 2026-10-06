@@ -2,6 +2,10 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 
 import { CurrenciesTab } from "./CurrenciesTab";
 
+vi.mock("./DefaultCurrencySelect", () => ({
+  DefaultCurrencySelect: () => <div>default-currency-select</div>,
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));

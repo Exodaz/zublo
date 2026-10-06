@@ -2,6 +2,7 @@ import { Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ServiceIcon } from "@/components/subscriptions/SubscriptionsServiceTabs";
+import { memberCurrencyOf } from "@/lib/memberBilling";
 import type { LedgerRow } from "@/lib/memberLedger";
 import { serviceKeyOf } from "@/lib/serviceGroups";
 import { formatDate, formatPrice } from "@/lib/utils";
@@ -52,7 +53,7 @@ export function LedgerTable({
       <ul className="divide-y">
         {rows.map((row) => {
           const { payment, member, sub } = row;
-          const currency = sub?.expand?.currency;
+          const currency = memberCurrencyOf(sub, mainCurrency);
           return (
             <li
               key={payment.id}
@@ -78,7 +79,7 @@ export function LedgerTable({
               </span>
               <span className="text-muted-foreground">{periodText(t, payment.period_months ?? 0)}</span>
               <span className="font-mono font-semibold md:text-right">
-                {formatPrice(payment.amount ?? 0, currency?.symbol ?? mainSymbol, {
+                {formatPrice(payment.amount ?? 0, currency?.symbol ?? "$", {
                   currencyCode: currency?.code,
                 })}
               </span>

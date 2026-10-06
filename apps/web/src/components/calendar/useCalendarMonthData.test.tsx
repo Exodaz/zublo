@@ -317,9 +317,16 @@ describe("useCalendarMonthData", () => {
       const { result } = renderHook(() =>
         useCalendarMonthData({
           subscriptions: [
-            getSubscription({ id: "sub-1", currency: "cur-1" }),
+            getSubscription({ id: "sub-1", currency: "cur-1", member_currency: "cur-1" }),
+            // Members pay in BRL here.
             getSubscription({
               id: "sub-2",
+              currency: "cur-2",
+              expand: { member_currency: getCurrency({ id: "cur-2", code: "BRL", rate: 5 }) },
+            }),
+            // Billed in BRL, but members pay in the main currency (no member currency set).
+            getSubscription({
+              id: "sub-3",
               currency: "cur-2",
               expand: { currency: getCurrency({ id: "cur-2", code: "BRL", rate: 5 }) },
             }),
@@ -331,6 +338,7 @@ describe("useCalendarMonthData", () => {
             member({ id: "today", expires_at: "2026-04-15", amount: 400 }),
             member({ id: "brl", subscription: "sub-2", expires_at: "2026-04-20", amount: 50 }),
             member({ id: "no-amount", expires_at: "2026-04-25" }),
+            member({ id: "main", subscription: "sub-3", expires_at: "2026-04-30", amount: 100 }),
             member({ id: "other-month", expires_at: "2026-05-01", amount: 999 }),
           ],
           year: 2026,
@@ -340,10 +348,10 @@ describe("useCalendarMonthData", () => {
       );
 
       expect(result.current.memberStats).toEqual({
-        count: 4,
-        total: 810,
-        upcomingCount: 3,
-        upcomingTotal: 410,
+        count: 5,
+        total: 910,
+        upcomingCount: 4,
+        upcomingTotal: 510,
       });
     } finally {
       vi.useRealTimers();

@@ -78,7 +78,7 @@ export function SubscriptionFormModal({
     cycles,
     selectedCurrency,
     formState: { errors, isSubmitting },
-  } = useSubscriptionForm({ sub, currencies, household });
+  } = useSubscriptionForm({ sub, currencies, household, defaultCurrencyId: authUser?.default_currency });
 
   // Set once the user picks or clears a service in this session, so an
   // uploaded logo that would hide the new brand logo can be dropped on save.
