@@ -900,5 +900,8 @@
   "currency_set": "Currency set on {{count}} subscription(s)",
   "default_new_currency": "Default for new subscriptions",
   "default_new_currency_hint": "Currency preselected when you add a subscription.",
-  "main_currency_option": "Main currency"
+  "main_currency_option": "Main currency",
+  "member_income_expected": "Member income / month ({{count}} members)",
+  "member_income_received": "Received this month ({{count}} payments)",
+  "net_monthly": "Net / month (income − expenses)"
 }

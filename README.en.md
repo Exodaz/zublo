@@ -385,6 +385,13 @@ For services billed in one currency (e.g. TRY) while members pay you in another 
 - The payment dialog has 1 month / 6 months / 1 year buttons and starts on the member's period; each payment updates the member's period.
 - Export/import keep the member currency and periods.
 
+**Dashboard: expenses and income**
+- The first row (Total monthly …) is **expenses**: every service's real price converted to the main currency with the exchange rates (e.g. ₺ → ฿). Set each service's real currency and an Exchange Rate API so rates stay current.
+- With members, a second row shows **member income**:
+  - *Member income / month*: per-period amounts of members who have not expired ÷ months in their period (no period → the group's billing cycle)
+  - *Received this month*: payments actually recorded this month
+  - *Net / month*: member income − monthly expenses
+
 ### Example: a Microsoft 365 Family plan shared by five people
 
 1. **Add subscription:**
@@ -412,6 +419,7 @@ For services billed in one currency (e.g. TRY) while members pay you in another 
 | `0.8.0` | Member payments (amount, slip, period, automatic renewal, history) and the Members & Income page (ledger, member register, Excel export) | Yes (`member_payments` table, `renewal_months` field) |
 | `0.9.0` | Credit menu: credit wallets (App Store Credit) with top-ups and balance checks, run-out forecast and reminders | Yes (`credit_wallets`, `credit_entries` tables) |
 | `0.10.0` | Currency shown on cards, bulk set currency, default currency for new subscriptions, member currency per group, member billing period (1/6/12 months) | Yes (`member_currency`, `default_currency` fields) |
+| `0.11.0` | Dashboard shows member income (expected per month, received this month) and the net against expenses | No |
 
 Migrations run automatically on start and keep existing data.
 

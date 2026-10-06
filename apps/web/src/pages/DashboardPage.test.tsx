@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   useYearlyCosts: vi.fn(),
   useAIRecommendations: vi.fn(),
   useDashboardDerivedData: vi.fn(),
+  useMemberIncome: vi.fn(() => ({ data: undefined, isLoading: false }) as { data?: unknown; isLoading: boolean }),
   user: {
     id: "user-1",
     name: "Daniel",
@@ -34,6 +35,10 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/hooks/useSummaryData", () => ({
   useSummaryData: mocks.useSummaryData,
+}));
+
+vi.mock("@/hooks/useMemberIncome", () => ({
+  useMemberIncome: mocks.useMemberIncome,
 }));
 
 vi.mock("@/hooks/useYearlyCosts", () => ({
@@ -225,6 +230,32 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith("some_error_key");
     });
+  });
+
+  it("shows member income, this month's receipts and the net against expenses", () => {
+    mocks.useMemberIncome.mockReturnValueOnce({
+      data: { expectedMonthly: 180, payingMembers: 5, receivedThisMonth: 400, receivedCount: 1 },
+      isLoading: false,
+    });
+    const { Wrapper } = createQueryClientWrapper();
+    render(<DashboardPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText("member_income_expected:180 $")).toBeInTheDocument();
+    expect(screen.getByText("member_income_received:400 $")).toBeInTheDocument();
+    // 180 income − 50 expenses
+    expect(screen.getByText("net_monthly:130 $")).toBeInTheDocument();
+    expect(mocks.useMemberIncome).toHaveBeenCalledWith("user-1");
+  });
+
+  it("shows no net until the expense summary is loaded", () => {
+    mocks.useSummaryData.mockReturnValue({ data: undefined, isLoading: true });
+    mocks.useMemberIncome.mockReturnValueOnce({
+      data: { expectedMonthly: 180, payingMembers: 5, receivedThisMonth: 0, receivedCount: 0 },
+      isLoading: false,
+    });
+    const { Wrapper } = createQueryClientWrapper();
+    render(<DashboardPage />, { wrapper: Wrapper });
+    expect(screen.getByText("net_monthly:—")).toBeInTheDocument();
   });
 
   it("renders safe fallbacks when user is null and summary is loading", () => {

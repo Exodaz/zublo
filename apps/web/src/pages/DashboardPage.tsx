@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BarChart2, Calendar, DollarSign, TrendingUp } from "lucide-react";
+import { BarChart2, Calendar, DollarSign, HandCoins, Scale, TrendingUp, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,7 @@ import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { useDashboardDerivedData } from "@/components/dashboard/useDashboardDerivedData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAIRecommendations } from "@/hooks/useAIRecommendations";
+import { useMemberIncome } from "@/hooks/useMemberIncome";
 import { useSummaryData } from "@/hooks/useSummaryData";
 import { useYearlyCosts } from "@/hooks/useYearlyCosts";
 import { queryKeys } from "@/lib/queryKeys";
@@ -28,6 +29,7 @@ export function DashboardPage() {
   const summary = useSummaryData(userId);
   const yearlyCosts = useYearlyCosts(userId);
   const recommendations = useAIRecommendations(userId);
+  const memberIncome = useMemberIncome(userId);
 
   const snapshotMutation = useMutation({
     mutationFn: () => yearlyCostsService.snapshot(),
@@ -117,6 +119,35 @@ export function DashboardPage() {
           gradient="from-orange-500/10 to-transparent border-orange-500/20"
         />
       </div>
+
+      {memberIncome.data ? (
+        // Shown once there are members: services are the expense, members the income.
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <SummaryCard
+            title={t("member_income_expected", { count: memberIncome.data.payingMembers })}
+            value={formatValue(memberIncome.data.expectedMonthly)}
+            icon={<HandCoins className="h-6 w-6 text-emerald-500" />}
+            gradient="from-emerald-500/10 to-transparent border-emerald-500/20"
+          />
+          <SummaryCard
+            title={t("member_income_received", { count: memberIncome.data.receivedCount })}
+            value={formatValue(memberIncome.data.receivedThisMonth)}
+            icon={<Wallet className="h-6 w-6 text-teal-500" />}
+            gradient="from-teal-500/10 to-transparent border-teal-500/20"
+          />
+          <SummaryCard
+            title={t("net_monthly")}
+            value={
+              summaryData
+                ? formatValue(memberIncome.data.expectedMonthly - summaryData.totalMonthly)
+                : "—"
+            }
+            icon={<Scale className="h-6 w-6 text-sky-500" />}
+            loading={summary.isLoading}
+            gradient="from-sky-500/10 to-transparent border-sky-500/20"
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <CostHistoryCard data={chartData} formatValue={formatValue} />
