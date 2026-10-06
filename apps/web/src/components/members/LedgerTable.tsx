@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ServiceIcon } from "@/components/subscriptions/SubscriptionsServiceTabs";
 import { memberCurrencyOf } from "@/lib/memberBilling";
 import type { LedgerRow } from "@/lib/memberLedger";
+import { hasSlip } from "@/lib/memberSlip";
 import { serviceKeyOf } from "@/lib/serviceGroups";
 import { formatDate, formatPrice } from "@/lib/utils";
 import type { Currency, MemberPayment } from "@/types";
@@ -85,7 +86,7 @@ export function LedgerTable({
               </span>
               <span>{formatDate(payment.expires_after)}</span>
               <span>
-                {payment.slip ? (
+                {hasSlip(payment) ? (
                   <button
                     type="button"
                     onClick={() => onOpenSlip(payment)}

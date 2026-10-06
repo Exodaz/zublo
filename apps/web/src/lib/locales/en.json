@@ -903,5 +903,8 @@
   "main_currency_option": "Main currency",
   "member_income_expected": "Member income / month ({{count}} members)",
   "member_income_received": "Received this month ({{count}} payments)",
-  "net_monthly": "Net / month (income − expenses)"
+  "net_monthly": "Net / month (income − expenses)",
+  "slip_link": "Slip link",
+  "slip_link_placeholder": "…or paste a link to the slip (https://…)",
+  "slip_link_invalid": "Enter a link starting with http:// or https://"
 }

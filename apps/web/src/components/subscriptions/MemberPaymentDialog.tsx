@@ -22,6 +22,7 @@ import { toIsoDate } from "@/lib/dateInput";
 import { MEMBER_PERIODS } from "@/lib/memberBilling";
 import { memberExpiryStatus } from "@/lib/memberExpiry";
 import { computeExpiry } from "@/lib/memberRenewal";
+import { hasSlip, isValidSlipLink } from "@/lib/memberSlip";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "@/lib/toast";
 import { cn, formatDate, formatPrice } from "@/lib/utils";
@@ -85,6 +86,8 @@ export function MemberPaymentDialog({
   // null: follow the computed date; otherwise the date the user picked.
   const [manualExpiry, setManualExpiry] = useState<string | null>(null);
   const [slip, setSlip] = useState<File | null>(null);
+  const [slipLink, setSlipLink] = useState("");
+  const slipLinkValid = isValidSlipLink(slipLink);
   const [notes, setNotes] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -111,6 +114,7 @@ export function MemberPaymentDialog({
       data.append("period_months", String(isManual ? 0 : months));
       data.append("expires_after", expiresAfter);
       if (slip) data.append("slip", slip);
+      if (slipLink.trim()) data.append("slip_url", slipLink.trim());
       if (notes.trim()) data.append("notes", notes.trim());
       return memberPaymentsService.create(data);
     },
@@ -119,6 +123,7 @@ export function MemberPaymentDialog({
       toast.success(t("renewed_until", { date: formatDate(payment.expires_after) }));
       setManualExpiry(null);
       setSlip(null);
+      setSlipLink("");
       setNotes("");
     },
     onError: () => toast.error(t("payment_save_failed")),
@@ -276,6 +281,16 @@ export function MemberPaymentDialog({
               onChange={(e) => setSlip(e.target.files?.[0] ?? null)}
             />
             <p className="text-xs text-muted-foreground">{t("slip_hint")}</p>
+            <Input
+              aria-label={t("slip_link")}
+              type="url"
+              inputMode="url"
+              placeholder={t("slip_link_placeholder")}
+              value={slipLink}
+              onChange={(e) => setSlipLink(e.target.value)}
+              aria-invalid={!slipLinkValid}
+            />
+            {!slipLinkValid && <p className="text-xs text-destructive">{t("slip_link_invalid")}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -293,7 +308,7 @@ export function MemberPaymentDialog({
             <Button type="button" variant="ghost" onClick={onClose}>
               {t("close")}
             </Button>
-            <Button type="submit" disabled={saveMutation.isPending || !paidAt || !expiresAfter}>
+            <Button type="submit" disabled={saveMutation.isPending || !paidAt || !expiresAfter || !slipLinkValid}>
               {saveMutation.isPending ? t("saving") : t("save_payment")}
             </Button>
           </div>
@@ -333,7 +348,7 @@ export function MemberPaymentDialog({
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    {payment.slip && (
+                    {hasSlip(payment) && (
                       <Button
                         type="button"
                         variant="ghost"

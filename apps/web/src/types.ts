@@ -238,6 +238,8 @@ export interface MemberPayment {
   expires_after: string;
   /** Protected file: open through memberPaymentsService.slipUrl. */
   slip?: string;
+  /** Link to the slip (e.g. a shared image) instead of an uploaded file. */
+  slip_url?: string;
   notes?: string;
   created?: string;
 }

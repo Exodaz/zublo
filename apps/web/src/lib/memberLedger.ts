@@ -6,7 +6,7 @@
 import { isoToDisplay } from "@/lib/dateInput";
 import { type MemberExpiryStatus, memberExpiryStatus } from "@/lib/memberExpiry";
 import { toDay } from "@/lib/memberRenewal";
-import { toMainCurrency } from "@/lib/utils";
+import { sanitizeHref, toMainCurrency } from "@/lib/utils";
 import type { MemberPayment, Subscription, SubscriptionMember } from "@/types";
 
 // ── Period ────────────────────────────────────────────────────────────────────
@@ -204,7 +204,8 @@ export function toLedgerSheet(rows: LedgerRow[], mainCode: string): Record<strin
     expires_before: isoToDisplay(payment.expires_before),
     expires_after: isoToDisplay(payment.expires_after),
     notes: payment.notes ?? "",
-    slip: payment.slip ? "yes" : "no",
+    // A link is more useful in a spreadsheet than "yes".
+    slip: payment.slip ? "yes" : sanitizeHref(payment.slip_url) ?? "no",
   }));
 }
 

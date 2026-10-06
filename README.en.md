@@ -293,7 +293,7 @@ Record each member's payment with an optional slip, and extend their access auto
    - the **payment date** (today by default)
    - the **amount**
    - the **period**: 1 month / 1 year / custom number of months
-   - an optional **slip** (image or PDF)
+   - an optional **slip**: an image or PDF, or a **slip link** (e.g. an image shared on LINE or Google Drive; http(s) links only)
    - notes
 3. The **new expiry date** is computed right away:
    - It extends the current expiry, e.g. 14/03/2027 + 1 year → 14/03/2028.
@@ -420,6 +420,7 @@ For services billed in one currency (e.g. TRY) while members pay you in another 
 | `0.9.0` | Credit menu: credit wallets (App Store Credit) with top-ups and balance checks, run-out forecast and reminders | Yes (`credit_wallets`, `credit_entries` tables) |
 | `0.10.0` | Currency shown on cards, bulk set currency, default currency for new subscriptions, member currency per group, member billing period (1/6/12 months) | Yes (`member_currency`, `default_currency` fields) |
 | `0.11.0` | Dashboard shows member income (expected per month, received this month) and the net against expenses | No |
+| `0.12.0` | Slips can be saved as a link instead of a file; opened from the history and the ledger, exported as the link in Excel | Yes (`slip_url` field) |
 
 Migrations run automatically on start and keep existing data.
 

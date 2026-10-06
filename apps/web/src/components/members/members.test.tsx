@@ -120,6 +120,14 @@ describe("LedgerTable", () => {
     expect(onOpenMember).toHaveBeenCalledWith(rows[1]);
   });
 
+  it("offers slips given as links", () => {
+    const onOpenSlip = vi.fn();
+    const rows = [row({ id: "p1", payment: { slip_url: "https://line.me/s/x" } as never })];
+    render(<LedgerTable rows={rows} mainCurrency={baht} onOpenMember={vi.fn()} onOpenSlip={onOpenSlip} />);
+    fireEvent.click(screen.getByRole("button", { name: /view_slip/ }));
+    expect(onOpenSlip).toHaveBeenCalledWith(rows[0].payment);
+  });
+
   it("falls back to the dollar sign and shows an empty state", () => {
     const { rerender } = render(
       <LedgerTable

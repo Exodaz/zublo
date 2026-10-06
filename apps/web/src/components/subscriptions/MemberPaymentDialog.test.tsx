@@ -176,6 +176,28 @@ describe("MemberPaymentDialog", () => {
     });
   });
 
+  it("saves a slip link instead of a file, rejecting unsafe links", async () => {
+    renderDialog();
+    const link = screen.getByLabelText("slip_link");
+    fireEvent.change(link, { target: { value: "javascript:alert(1)" } });
+    expect(screen.getByText("slip_link_invalid")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "save_payment" })).toBeDisabled();
+
+    fireEvent.change(link, { target: { value: " https://line.me/R/slip/abc " } });
+    expect(screen.queryByText("slip_link_invalid")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "save_payment" }));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(lastForm().get("slip_url")).toBe("https://line.me/R/slip/abc");
+    expect(lastForm().has("slip")).toBe(false);
+    await waitFor(() => expect(link).toHaveValue(""));
+  });
+
+  it("shows view slip for payments with a slip link", () => {
+    renderDialog({ payments: [payment({ slip: undefined, slip_url: "https://line.me/s/x" })] });
+    const rows = within(screen.getByText("payment_history").closest("section") as HTMLElement).getAllByRole("listitem");
+    expect(within(rows[0]).getByRole("button", { name: /view_slip/ })).toBeInTheDocument();
+  });
+
   it("recomputes the expiry for monthly and custom periods", () => {
     renderDialog();
 
@@ -229,6 +251,7 @@ describe("MemberPaymentDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "save_payment" }));
     await waitFor(() => expect(mocks.create).toHaveBeenCalled());
     expect(lastForm().has("amount")).toBe(false);
+    expect(lastForm().has("slip_url")).toBe(false);
     expect(lastForm().has("slip")).toBe(false);
     expect(lastForm().has("notes")).toBe(false);
   });

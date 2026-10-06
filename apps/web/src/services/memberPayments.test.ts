@@ -63,6 +63,17 @@ describe("memberPaymentsService", () => {
     );
   });
 
+  it("opens a safe slip link without a file token", async () => {
+    mocks.getToken.mockClear();
+    await expect(
+      memberPaymentsService.slipUrl({ id: "p-3", slip_url: "https://line.me/s/x" } as never),
+    ).resolves.toBe("https://line.me/s/x");
+    await expect(
+      memberPaymentsService.slipUrl({ id: "p-4", slip_url: "javascript:alert(1)" } as never),
+    ).resolves.toBeNull();
+    expect(mocks.getToken).not.toHaveBeenCalled();
+  });
+
   it("has no slip URL without a slip", async () => {
     mocks.getToken.mockClear();
     await expect(memberPaymentsService.slipUrl({ id: "p-2" } as never)).resolves.toBeNull();

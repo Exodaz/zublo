@@ -179,6 +179,9 @@ describe("ledger and register", () => {
         slip: "no",
       },
     ]);
+    // A slip link is exported as the link itself.
+    const linked = buildLedgerRows([pay({ id: "p2", slip_url: "https://line.me/s/x" })], subsById, membersById);
+    expect(toLedgerSheet(linked, "THB")[0].slip).toBe("https://line.me/s/x");
 
     const register = buildMemberRows(
       [member({ id: "a1", name: "A1", email: "a@x", expires_at: "2027-01-01" }), member({ id: "q", subscription: "nope" })],

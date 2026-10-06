@@ -1,4 +1,5 @@
 import pb from "@/lib/pb";
+import { sanitizeHref } from "@/lib/utils";
 import type { MemberPayment } from "@/types";
 
 export const memberPaymentsService = {
@@ -22,9 +23,12 @@ export const memberPaymentsService = {
   /** Deleting the latest payment restores the member's previous expiry date. */
   delete: (id: string) => pb.collection("member_payments").delete(id),
 
-  /** Slips are protected files: their URL needs a short-lived file token. */
+  /**
+   * Where the slip opens: an uploaded file (protected, so its URL needs a
+   * short-lived file token) wins over a link; only http(s) links are used.
+   */
   slipUrl: async (payment: MemberPayment): Promise<string | null> => {
-    if (!payment.slip) return null;
+    if (!payment.slip) return sanitizeHref(payment.slip_url);
     const token = await pb.files.getToken();
     return pb.files.getUrl(
       { collectionId: "member_payments", id: payment.id } as Parameters<typeof pb.files.getUrl>[0],
